@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pilot - HY320 Mini</title>
+    <style>
+        :root {
+            --bg: #10131d;
+            --card: #181c2b;
+            --accent: #ff4b72;
+            --cyan: #00d2ff;
+            --text: #ffffff;
+            --text-dim: #8b9bb4;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--text); padding-bottom: 60px; }
+        header {
+            position: sticky; top: 0; background: rgba(16,19,29,0.95);
+            backdrop-filter: blur(10px); padding: 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            display: flex; justify-content: space-between; align-items: center; z-index: 100;
+        }
+        h1 { font-size: 1.1rem; font-weight: 700; color: var(--cyan); }
+        .status-dot {
+            display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+            background: #ff4444; margin-right: 6px;
+        }
+        .status-dot.online { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
+        
+        .section { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .section-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 12px; }
+
+        /* Szybkie akcje */
+        .quick-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button {
+            background: var(--card); border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text); padding: 12px; border-radius: 12px;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:active { transform: scale(0.97); }
+        button.btn-blackout { background: #221419; border-color: var(--accent); color: var(--accent); }
+        button.btn-add { background: #132433; border-color: var(--cyan); color: var(--cyan); }
+
+        /* Kafelki shaderów */
+        .shaders-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+        }
+        .shader-card {
+            background: var(--card); border-radius: 10px; overflow: hidden;
+            border: 2px solid transparent; text-align: center; cursor: pointer;
+        }
+        .shader-card.active { border-color: var(--accent); box-shadow: 0 0 12px rgba(255,75,114,0.4); }
+        .shader-card img { width: 100%; height: 70px; object-fit: cover; display: block; }
+        .shader-card span { display: block; padding: 6px 2px; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Suwaki */
+        .slider-group { margin-bottom: 14px; }
+        .slider-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
+        input[type="range"] {
+            width: 100%; -webkit-appearance: none; background: #262c3f;
+            height: 6px; border-radius: 4px; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 20px; height: 20px;
+            border-radius: 50%; background: var(--cyan); cursor: pointer;
+        }
+
+        /* Pole YouTube */
+        .yt-box { display: flex; gap: 8px; }
+        .yt-box input {
+            flex: 1; background: var(--card); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px; padding: 10px 14px; color: var(--text); font-size: 0.9rem; outline: none;
+        }
+
+        /* Edytor masek (Canvas) */
+        #maskCanvas {
+            width: 100%; height: 200px; background: #000; border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.15); touch-action: none;
+        }
+    </style>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <header>
+        <h1>📱 PILOT PROJEKTORA</h1>
+        <div id="connStatus"><span class="status-dot" id="dot"></span><span id="statusText">Łączenie...</span></div>
+    </header>
+
+    <div class="section">
+        <div class="quick-row">
+            <button class="btn-blackout" id="blackoutBtn" onclick="toggleBlackout()">🌑 BLACKOUT</button>
+            <button class="btn-add" onclick="addWindow()">➕ DODAJ OKNO</button>
+        </div>
+    </div>
+
+    <!-- MASKOWANIE OKIEN -->
+    <div class="section">
+        <div class="section-title">✂️ EDYTOR MASEK (Przeciągaj punkty okna)</div>
+        <canvas id="maskCanvas"></canvas>
+        <div style="display:flex; justify-content:space-between; margin-top:8px;">
+            <button style="font-size:0.8rem; padding:8px 12px;" onclick="resetMasks()">Wyczyść maski</button>
+            <span style="font-size:0.8rem; color:var(--text-dim); line-height:30px;" id="winCount">Okna: 0</span>
+        </div>
+    </div>
+
+    <!-- SUWAKI STEROWANIA -->
+    <div class="section">
+        <div class="section-title">🎛️ PARAMETRY EFEKTU</div>
+        
+        <div class="slider-group">
+            <div class="slider-label"><span>Prędkość animacji</span><span id="val_speed">1.0</span></div>
+            <input type="range" min="0.1" max="3.0" step="0.1" value="1.0" oninput="updateUniform('u_timeSpeed', this.value, 'val_speed')">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label"><span>Kolor (Hue Shift)</span><span id="val_hue">0.0</span></div>
+            <input type="range" min="0.0" max="1.0" step="0.05" value="0.0" oninput="updateUniform('u_hueShift', this.value, 'val_hue')">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label"><span>Jasność światła</span><span id="val_bright">1.0</span></div>
+            <input type="range" min="0.1" max="2.0" step="0.1" value="1.0" oninput="updateUniform('u_brightness', this.value, 'val_bright')">
+        </div>
+
+        <div class="slider-group">
+            <div class="slider-label"><span>Zoom / Rozmiar</span><span id="val_zoom">1.0</span></div>
+            <input type="range" min="0.3" max="3.0" step="0.1" value="1.0" oninput="updateUniform('u_zoom', this.value, 'val_zoom')">
+        </div>
+    </div>
+
+    <!-- YOUTUBE -->
+    <div class="section">
+        <div class="section-title">▶️ RZUĆ FILM Z YOUTUBE</div>
+        <div class="yt-box">
+            <input type="text" id="ytUrl" placeholder="Wklej link YouTube lub ID...">
+            <button onclick="sendYouTube()">RZUĆ</button>
+        </div>
+    </div>
+
+    <!-- WYBÓR SHADERÓW -->
+    <div class="section">
+        <div class="section-title">🎨 WYBIERZ SHADER PROJEKCJI</div>
+        <div class="shaders-grid" id="shaderList"></div>
+    </div>
+
+    <script>
+        const dot = document.getElementById("dot");
+        const statusText = document.getElementById("statusText");
+        let conn = null;
+        let isBlackout = false;
+
+        // PeerJS połączenie z projektorem "hy320-kawak"
+        const peer = new Peer();
+        peer.on("open", () => {
+            connectToProjector();
+        });
+
+        function connectToProjector() {
+            conn = peer.connect("hy320-kawak");
+            conn.on("open", () => {
+                dot.className = "status-dot online";
+                statusText.innerText = "Połączono!";
+            });
+            conn.on("close", () => {
+                dot.className = "status-dot";
+                statusText.innerText = "Rozłączono (ponawiam...)";
+                setTimeout(connectToProjector, 2000);
+            });
+        }
+
+        function send(data) {
+            if (conn && conn.open) {
+                conn.send(data);
+            }
+        }
+
+        function toggleBlackout() {
+            isBlackout = !isBlackout;
+            document.getElementById("blackoutBtn").style.background = isBlackout ? "var(--accent)" : "#221419";
+            send({ type: "blackout", state: isBlackout });
+        }
+
+        function updateUniform(name, val, labelId) {
+            document.getElementById(labelId).innerText = val;
+            let values = {};
+            values[name] = parseFloat(val);
+            send({ type: "uniforms", values: values });
+        }
+
+        function sendYouTube() {
+            let url = document.getElementById("ytUrl").value.trim();
+            let match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/))([^?&]+)/);
+            let id = match ? match[1] : url;
+            if (id) {
+                send({ type: "youtube", id: id });
+            }
+        }
+
+        // Baza shaderów
+        const shaders = [
+            { file: "plasma_glow_frag.glsl", name: "Plasma Glow", img: "plasmaGlow.png" },
+            { file: "flow_gradient_frag.glsl", name: "Flow Gradient", img: "flowGradient.png" },
+            { file: "kaleido2_frag.glsl", name: "Kalejdoskop", img: "kaleido2.png" },
+            { file: "rainbow_frag.glsl", name: "Rainbow", img: "rainbow.png" },
+            { file: "simplex_frag.glsl", name: "Simplex Noise", img: "simplex.png" },
+            { file: "color_explosion_frag.glsl", name: "Explosion", img: "colorExplosion.png" },
+            { file: "amoeba_smooth_frag.glsl", name: "Amoeba", img: "amoebaSmooth.png" },
+            { file: "blob_jello_frag.glsl", name: "Blob Jelly", img: "blobJelly.png" },
+            { file: "disco_texture_frag.glsl", name: "Disco", img: "discoTexture.png" },
+            { file: "oil_swirl_frag.glsl", name: "Oil Swirl", img: "oilSwirl.png" },
+            { file: "turbo_lence_frag.glsl", name: "Turbulence", img: "turboLence.png" },
+            { file: "warp_plasma_frag.glsl", name: "Warp Plasma", img: "warpPlasma.png" }
+        ];
+
+        const listContainer = document.getElementById("shaderList");
+        shaders.forEach((s, idx) => {
+            const card = document.createElement("div");
+            card.className = "shader-card" + (idx === 0 ? " active" : "");
+            card.innerHTML = `<img src="extracted_assets/shader_images/${s.img}" onerror="this.src='extracted_assets/shader_images/solidColor.png'"><span>${s.name}</span>`;
+            card.onclick = () => {
+                document.querySelectorAll(".shader-card").forEach(c => c.classList.remove("active"));
+                card.classList.add("active");
+                send({ type: "shader", file: s.file });
+            };
+            listContainer.appendChild(card);
+        });
+
+        // EDYTOR MASEK NA CANVASIE
+        const mCanvas = document.getElementById("maskCanvas");
+        const mCtx = mCanvas.getContext("2d");
+        let windows = [];
+        let draggingPoint = null;
+
+        function resizeMaskCanvas() {
+            mCanvas.width = mCanvas.clientWidth;
+            mCanvas.height = mCanvas.clientHeight;
+            drawMaskCanvas();
+        }
+        window.addEventListener("resize", resizeMaskCanvas);
+        setTimeout(resizeMaskCanvas, 100);
+
+        function addWindow() {
+            const w = 0.3, h = 0.4;
+            const x = 0.1 + (windows.length * 0.1) % 0.5;
+            const y = 0.2;
+            windows.push({
+                points: [
+                    { x: x, y: y },
+                    { x: x + w, y: y },
+                    { x: x + w, y: y + h },
+                    { x: x, y: y + h }
+                ]
+            });
+            document.getElementById("winCount").innerText = "Okna: " + windows.length;
+            drawMaskCanvas();
+            send({ type: "masks", windows: windows });
+        }
+
+        function resetMasks() {
+            windows = [];
+            document.getElementById("winCount").innerText = "Okna: 0";
+            drawMaskCanvas();
+            send({ type: "masks", windows: windows });
+        }
+
+        function drawMaskCanvas() {
+            mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
+            mCtx.fillStyle = "#181c2b";
+            mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
+
+            windows.forEach((win, wIdx) => {
+                mCtx.beginPath();
+                win.points.forEach((p, pIdx) => {
+                    const px = p.x * mCanvas.width;
+                    const py = p.y * mCanvas.height;
+                    if (pIdx === 0) mCtx.moveTo(px, py);
+                    else mCtx.lineTo(px, py);
+                });
+                mCtx.closePath();
+                mCtx.fillStyle = "rgba(0, 210, 255, 0.2)";
+                mCtx.fill();
+                mCtx.strokeStyle = "#00d2ff";
+                mCtx.lineWidth = 2;
+                mCtx.stroke();
+
+                // Rysuj punkty narożników
+                win.points.forEach((p, pIdx) => {
+                    const px = p.x * mCanvas.width;
+                    const py = p.y * mCanvas.height;
+                    mCtx.beginPath();
+                    mCtx.arc(px, py, 8, 0, Math.PI * 2);
+                    mCtx.fillStyle = "#ff4b72";
+                    mCtx.fill();
+                    mCtx.strokeStyle = "#fff";
+                    mCtx.lineWidth = 2;
+                    mCtx.stroke();
+                });
+            });
+        }
+
+        // Dotyk i przeciąganie punktów
+        function getPos(e) {
+            const rect = mCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - rect.left) / mCanvas.width,
+                y: (clientY - rect.top) / mCanvas.height
+            };
+        }
+
+        function findPoint(pos) {
+            const threshold = 20 / mCanvas.width;
+            for (let w of windows) {
+                for (let p of w.points) {
+                    const dx = p.x - pos.x;
+                    const dy = p.y - pos.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < threshold) return p;
+                }
+            }
+            return null;
+        }
+
+        mCanvas.addEventListener("pointerdown", (e) => {
+            const pos = getPos(e);
+            draggingPoint = findPoint(pos);
+        });
+
+        mCanvas.addEventListener("pointermove", (e) => {
+            if (draggingPoint) {
+                const pos = getPos(e);
+                draggingPoint.x = Math.max(0, Math.min(1, pos.x));
+                draggingPoint.y = Math.max(0, Math.min(1, pos.y));
+                drawMaskCanvas();
+                send({ type: "masks", windows: windows });
+            }
+        });
+
+        window.addEventListener("pointerup", () => { draggingPoint = null; });
+    </script>
+</body>
+</html>

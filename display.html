@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display - HY320 Mini</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body, html {
+            width: 100%; height: 100%;
+            background: #000000;
+            overflow: hidden;
+            cursor: none;
+        }
+        #stage {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+        }
+        canvas#webglCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: block;
+        }
+        iframe#ytPlayer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            border: none;
+            display: none;
+            pointer-events: none;
+        }
+        svg#maskOverlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 10;
+        }
+        #blackout {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #000000;
+            z-index: 20;
+            display: none;
+        }
+        #statusOverlay {
+            position: absolute;
+            bottom: 20px; right: 20px;
+            background: rgba(0,0,0,0.75);
+            color: #00d2ff;
+            font-family: monospace;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(0,210,255,0.3);
+            font-size: 14px;
+            z-index: 30;
+            transition: opacity 1s ease;
+        }
+    </style>
+    <!-- PeerJS do bezpośredniego połączenia P2P z telefonem bez serwera -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <div id="stage">
+        <canvas id="webglCanvas"></canvas>
+        <iframe id="ytPlayer" allow="autoplay"></iframe>
+        
+        <!-- Maska SVG wycinająca okna -->
+        <svg id="maskOverlay">
+            <defs>
+                <mask id="windowMask">
+                    <!-- Białe tło = widoczne światło -->
+                    <rect width="100%" height="100%" fill="white" id="maskBase" />
+                    <!-- Dynamiczne wielokąty wycinające okna -->
+                    <g id="maskPolygons"></g>
+                </mask>
+            </defs>
+            <!-- Cały ekran z nałożoną maską -->
+            <rect width="100%" height="100%" fill="black" mask="url(#windowMask)" id="maskShade" style="display:none;" />
+        </svg>
+
+        <div id="blackout"></div>
+        <div id="statusOverlay">Projektor ID: Łączenie...</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("webglCanvas");
+        const statusOverlay = document.getElementById("statusOverlay");
+        const blackout = document.getElementById("blackout");
+        const maskPolygons = document.getElementById("maskPolygons");
+        const maskShade = document.getElementById("maskShade");
+        const ytPlayer = document.getElementById("ytPlayer");
+
+        let gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        let currentProgram = null;
+        let animationFrameId = null;
+        let startTime = Date.now();
+
+        // Parametry domyślne shaderów
+        let uniforms = {
+            u_timeSpeed: 1.0,
+            u_zoom: 1.0,
+            u_hueShift: 0.0,
+            u_colorBoost: 1.0,
+            u_brightness: 1.0,
+            u_scale: 1.0,
+            u_frequency: 1.0
+        };
+
+        // Standardowy quad fullscreen
+        const vsSource = `
+            attribute vec2 aPosition;
+            varying vec2 vUV;
+            void main() {
+                vUV = (aPosition + 1.0) * 0.5;
+                gl_Position = vec4(aPosition, 0.0, 1.0);
+            }
+        `;
+
+        // Domyślny piękny shader plazmy
+        let defaultFrag = `
+            precision mediump float;
+            varying vec2 vUV;
+            uniform float u_time;
+            uniform vec2 u_resolution;
+            uniform float u_timeSpeed;
+            uniform float u_hueShift;
+            uniform float u_brightness;
+
+            vec3 hsv2rgb(vec3 c) {
+                vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+                vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+                return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+            }
+
+            void main() {
+                vec2 uv = (gl_FragCoord.xy / u_resolution.xy) * 2.0 - 1.0;
+                float t = u_time * u_timeSpeed * 0.5;
+                float d = length(uv);
+                float angle = atan(uv.y, uv.x);
+                float colVal = sin(d * 8.0 - t * 2.0 + sin(angle * 4.0));
+                vec3 col = hsv2rgb(vec3(fract(colVal * 0.5 + u_hueShift), 0.85, u_brightness));
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
+        }
+        window.addEventListener("resize", resize);
+        resize();
+
+        function createShader(gl, type, source) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error("Błąd shadera:", gl.getShaderInfoLog(shader));
+                gl.deleteShader(shader);
+                return null;
+            }
+            return shader;
+        }
+
+        function loadProgram(fragSource) {
+            if (!gl) return;
+            const vs = createShader(gl, gl.VERTEX_SHADER, vsSource);
+            const fs = createShader(gl, gl.FRAGMENT_SHADER, fragSource);
+            if (!vs || !fs) return;
+
+            const prog = gl.createProgram();
+            gl.attachShader(prog, vs);
+            gl.attachShader(prog, fs);
+            gl.linkProgram(prog);
+
+            if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+                console.error("Link error:", gl.getProgramInfoLog(prog));
+                return;
+            }
+
+            const posBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                -1, -1,  1, -1, -1,  1,
+                -1,  1,  1, -1,  1,  1
+            ]), gl.STATIC_DRAW);
+
+            const aPos = gl.getAttribLocation(prog, "aPosition");
+            gl.enableVertexAttribArray(aPos);
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+            currentProgram = prog;
+        }
+
+        loadProgram(defaultFrag);
+
+        function render() {
+            if (gl && currentProgram && blackout.style.display !== "block") {
+                gl.useProgram(currentProgram);
+
+                const time = (Date.now() - startTime) * 0.001;
+                const uTime = gl.getUniformLocation(currentProgram, "u_time");
+                if (uTime) gl.uniform1f(uTime, time);
+
+                const uRes = gl.getUniformLocation(currentProgram, "u_resolution");
+                if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+
+                for (let k in uniforms) {
+                    const loc = gl.getUniformLocation(currentProgram, k);
+                    if (loc) gl.uniform1f(loc, uniforms[k]);
+                }
+
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+            }
+            animationFrameId = requestAnimationFrame(render);
+        }
+        render();
+
+        // Obsługa masek
+        function applyMasks(windows) {
+            if (!windows || windows.length === 0) {
+                maskShade.style.display = "none";
+                maskPolygons.innerHTML = "";
+                return;
+            }
+            maskShade.style.display = "block";
+            let svgHtml = "";
+            windows.forEach(w => {
+                // punkty przeliczone na piksele
+                const pts = w.points.map(p => `${p.x * window.innerWidth},${p.y * window.innerHeight}`).join(" ");
+                svgHtml += `<polygon points="${pts}" fill="black" />`;
+            });
+            maskPolygons.innerHTML = svgHtml;
+        }
+
+        // P2P PeerJS: Stałe ID projektora "hy320-kawak"
+        const peer = new Peer("hy320-kawak");
+
+        peer.on("open", (id) => {
+            statusOverlay.innerText = "Projektor GOTOWY! (ID: " + id + ")";
+            setTimeout(() => { statusOverlay.style.opacity = "0.2"; }, 4000);
+        });
+
+        peer.on("connection", (conn) => {
+            statusOverlay.innerText = "Telefon POŁĄCZONY! 📱✨";
+            statusOverlay.style.opacity = "1";
+            setTimeout(() => { statusOverlay.style.opacity = "0"; }, 3000);
+
+            conn.on("data", (data) => {
+                if (data.type === "shader") {
+                    ytPlayer.style.display = "none";
+                    canvas.style.display = "block";
+                    fetch("extracted_assets/shaders/" + data.file)
+                        .then(r => r.text())
+                        .then(code => loadProgram(code))
+                        .catch(e => console.error(e));
+                } else if (data.type === "uniforms") {
+                    uniforms = { ...uniforms, ...data.values };
+                } else if (data.type === "blackout") {
+                    blackout.style.display = data.state ? "block" : "none";
+                } else if (data.type === "masks") {
+                    applyMasks(data.windows);
+                } else if (data.type === "youtube") {
+                    canvas.style.display = "none";
+                    ytPlayer.style.display = "block";
+                    ytPlayer.src = "https://www.youtube-nocookie.com/embed/" + data.id + "?autoplay=1&controls=0&loop=1&playlist=" + data.id;
+                }
+            });
+        });
+
+        peer.on("error", (err) => {
+            console.error(err);
+            statusOverlay.innerText = "P2P info: " + err.type;
+        });
+    </script>
+</body>
+</html>
