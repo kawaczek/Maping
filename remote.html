@@ -159,6 +159,25 @@
         </div>
     </div>
 
+    <!-- GIFS & MEMES SEARCH -->
+    <div class="section">
+        <div class="section-title">🐱 GIFS & MEMES (GIPHY)</div>
+        <div class="yt-box" style="margin-bottom: 10px;">
+            <input type="text" id="gifQuery" placeholder="Search GIF or Meme (e.g. cat, party, fire)...">
+            <button onclick="searchGifs()">FIND</button>
+        </div>
+        <!-- Szybkie tagi -->
+        <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:8px;">
+            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('party')">🎉 Party</button>
+            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('fire')">🔥 Fire</button>
+            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('cat')">😺 Cat</button>
+            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('neon')">✨ Neon</button>
+            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('cyberpunk')">🏙️ Cyber</button>
+            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('trippy')">🌀 Trippy</button>
+        </div>
+        <div class="shaders-grid" id="gifGrid" style="max-height: 220px; overflow-y: auto;"></div>
+    </div>
+
     <div class="section">
         <div class="section-title">🎨 SELECT PROJECTION SHADER</div>
         <div class="shaders-grid" id="shaderList"></div>
@@ -240,6 +259,41 @@
             let id = match ? match[1] : url;
             if (id) send({ type: "youtube", id: id });
         }
+
+        // GIF / Meme Search via GIPHY Public Beta API
+        function quickGif(tag) {
+            document.getElementById("gifQuery").value = tag;
+            searchGifs();
+        }
+
+        async function searchGifs() {
+            const q = document.getElementById("gifQuery").value.trim() || "trippy";
+            const grid = document.getElementById("gifGrid");
+            grid.innerHTML = "<span style=\"grid-column: span 3; color: var(--text-dim); font-size:0.8rem;\">Loading GIFs...</span>";
+            try {
+                // Publiczny klucz deweloperski GIPHY
+                const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(q)}&limit=9&rating=g`);
+                const json = await res.json();
+                grid.innerHTML = "";
+                json.data.forEach(item => {
+                    const thumb = item.images.fixed_width_small.url;
+                    const full = item.images.original.url;
+                    const card = document.createElement("div");
+                    card.className = "shader-card";
+                    card.innerHTML = `<img src="${thumb}" style="height:70px; object-fit:cover;"><span>${item.title ? item.title.slice(0,10) : "GIF"}</span>`;
+                    card.onclick = () => {
+                        document.querySelectorAll("#gifGrid .shader-card").forEach(c => c.classList.remove("active"));
+                        card.classList.add("active");
+                        send({ type: "gif", url: full });
+                    };
+                    grid.appendChild(card);
+                });
+            } catch (err) {
+                grid.innerHTML = "<span style=\"grid-column: span 3; color: var(--accent); font-size:0.8rem;\">Failed to load GIFs</span>";
+            }
+        }
+        // Wczytaj początkowe GIF-y na start
+        setTimeout(() => quickGif("party"), 500);
 
         const shaders = [
             { file: "plasma_glow_frag.glsl", name: "Plasma Glow", img: "plasmaGlow.png" },
