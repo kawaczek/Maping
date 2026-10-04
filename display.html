@@ -19,6 +19,7 @@
             width: 100vw; height: 100vh;
             background: #000000;
         }
+        /* Tło globalne (gdy nie ma okien lub tło pod oknami) */
         canvas#webglCanvas {
             position: absolute;
             top: 0; left: 0;
@@ -33,7 +34,7 @@
             display: none;
             pointer-events: none;
         }
-        img#gifPlayer {
+        img#globalGif {
             position: absolute;
             top: 0; left: 0;
             width: 100%; height: 100%;
@@ -41,7 +42,25 @@
             display: none;
             pointer-events: none;
         }
-        /* Maska SVG wycinająca światło */
+        /* Kontener na niezależne media w poszczególnych oknach */
+        #windowsLayer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .window-surface {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+        }
+        .window-surface img, .window-surface video {
+            width: 100%; height: 100%;
+            object-fit: cover;
+        }
+        /* Maska wycinająca */
         svg#maskOverlay {
             position: absolute;
             top: 0; left: 0;
@@ -98,21 +117,22 @@
 </head>
 <body>
     <div id="stage">
+        <!-- Warstwa tła -->
         <canvas id="webglCanvas"></canvas>
         <iframe id="ytPlayer" allow="autoplay"></iframe>
-        <img id="gifPlayer" alt="GIF Loop" />
+        <img id="globalGif" alt="GIF Loop" />
         
-        <!-- Prawdziwa maska: czarna płachta z przezroczystymi oknami (okna świecą!) -->
+        <!-- Niezależne okna -->
+        <div id="windowsLayer"></div>
+
+        <!-- Maska SVG -->
         <svg id="maskOverlay">
             <defs>
                 <mask id="windowHoles">
-                    <!-- Białe tło = widoczna czarna zasłona -->
                     <rect width="100%" height="100%" fill="white" />
-                    <!-- Czarne wielokąty = dziury/okna gdzie widać światło! -->
                     <g id="maskHoles"></g>
                 </mask>
             </defs>
-            <!-- Czarna zasłona z wyciętymi oknami -->
             <rect width="100%" height="100%" fill="black" mask="url(#windowHoles)" id="maskCurtain" style="display:none;" />
         </svg>
 
@@ -136,7 +156,8 @@
         const maskHoles = document.getElementById("maskHoles");
         const maskCurtain = document.getElementById("maskCurtain");
         const ytPlayer = document.getElementById("ytPlayer");
-        const gifPlayer = document.getElementById("gifPlayer");
+        const globalGif = document.getElementById("globalGif");
+        const windowsLayer = document.getElementById("windowsLayer");
         const pinCodeEl = document.getElementById("pinCode");
         const pinBanner = document.getElementById("pinBanner");
         const pinSub = document.getElementById("pinSub");
@@ -154,19 +175,15 @@
         function renderQR() {
             if (typeof QRCode !== "undefined" && QRCode.toCanvas) {
                 QRCode.toCanvas(qrCanvas, remoteUrl, {
-                    width: 110,
-                    margin: 0,
+                    width: 110, margin: 0,
                     color: { dark: "#000000", light: "#ffffff" }
-                }, function (error) {
-                    if (error) console.error("QR Error:", error);
-                });
+                }, function (error) { if (error) console.error("QR Error:", error); });
             } else {
                 const img = new Image();
                 img.src = "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" + encodeURIComponent(remoteUrl);
                 img.onload = () => {
                     const ctx = qrCanvas.getContext("2d");
-                    qrCanvas.width = 110;
-                    qrCanvas.height = 110;
+                    qrCanvas.width = 110; qrCanvas.height = 110;
                     ctx.drawImage(img, 0, 0);
                 };
             }
@@ -178,13 +195,8 @@
         let startTime = Date.now();
 
         let uniforms = {
-            u_timeSpeed: 1.0,
-            u_zoom: 1.0,
-            u_hueShift: 0.0,
-            u_colorBoost: 1.0,
-            u_brightness: 1.0,
-            u_scale: 1.0,
-            u_frequency: 1.0
+            u_timeSpeed: 1.0, u_zoom: 1.0, u_hueShift: 0.0,
+            u_colorBoost: 1.0, u_brightness: 1.0, u_scale: 1.0, u_frequency: 1.0
         };
 
         const vsSource = `
@@ -234,12 +246,7 @@
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                console.error("Shader error:", gl.getShaderInfoLog(shader));
-                gl.deleteShader(shader);
-                return null;
-            }
-            return shader;
+            return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
         }
 
         function loadProgram(fragSource) {
@@ -249,10 +256,8 @@
             if (!vs || !fs) return;
 
             const prog = gl.createProgram();
-            gl.attachShader(prog, vs);
-            gl.attachShader(prog, fs);
+            gl.attachShader(prog, vs); gl.attachShader(prog, fs);
             gl.linkProgram(prog);
-
             if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
 
             const posBuffer = gl.createBuffer();
@@ -265,56 +270,60 @@
             const aPos = gl.getAttribLocation(prog, "aPosition");
             gl.enableVertexAttribArray(aPos);
             gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
-
             currentProgram = prog;
         }
-
         loadProgram(defaultFrag);
 
         function render() {
             if (gl && currentProgram && blackout.style.display !== "block") {
                 gl.useProgram(currentProgram);
-
                 const time = (Date.now() - startTime) * 0.001;
                 const uTime = gl.getUniformLocation(currentProgram, "u_time");
                 if (uTime) gl.uniform1f(uTime, time);
-
                 const uRes = gl.getUniformLocation(currentProgram, "u_resolution");
                 if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
-
                 for (let k in uniforms) {
                     const loc = gl.getUniformLocation(currentProgram, k);
                     if (loc) gl.uniform1f(loc, uniforms[k]);
                 }
-
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
             }
             requestAnimationFrame(render);
         }
         render();
 
-        // Nakładanie wyciętych okien
-        function applyMasks(windows) {
+        // Renderowanie wielu niezależnych okien z indywidualnymi gifami!
+        function applyMasksAndSurfaces(windows) {
+            windowsLayer.innerHTML = "";
             if (!windows || windows.length === 0) {
                 maskCurtain.style.display = "none";
                 maskHoles.innerHTML = "";
                 return;
             }
+
             maskCurtain.style.display = "block";
             let holesSvg = "";
-            windows.forEach(w => {
+
+            windows.forEach((w, idx) => {
                 const pts = w.points.map(p => `${p.x * window.innerWidth},${p.y * window.innerHeight}`).join(" ");
-                // Czarny wielokąt w masce wycina dziurę w czarnej zasłonie -> światło świeci w oknie!
+                // Wycięcie dziury w czarnej zasłonie
                 holesSvg += `<polygon points="${pts}" fill="black" />`;
+
+                // Jeśli okno ma przypisany własny dedykowany GIF/wideo:
+                if (w.mediaUrl) {
+                    const polyPts = w.points.map(p => `${p.x * 100}% ${p.y * 100}%`).join(", ");
+                    const surfaceDiv = document.createElement("div");
+                    surfaceDiv.className = "window-surface";
+                    surfaceDiv.style.clipPath = `polygon(${polyPts})`;
+                    surfaceDiv.innerHTML = `<img src="${w.mediaUrl}" style="width:100%; height:100%; object-fit:cover;" />`;
+                    windowsLayer.appendChild(surfaceDiv);
+                }
             });
             maskHoles.innerHTML = holesSvg;
         }
 
         const peer = new Peer(peerId);
-
-        peer.on("open", () => {
-            pinCodeEl.innerText = roomPin;
-        });
+        peer.on("open", () => { pinCodeEl.innerText = roomPin; });
 
         peer.on("connection", (conn) => {
             pinBanner.classList.add("connected");
@@ -328,28 +337,27 @@
             conn.on("data", (data) => {
                 if (data.type === "shader") {
                     ytPlayer.style.display = "none";
-                    gifPlayer.style.display = "none";
+                    globalGif.style.display = "none";
                     canvas.style.display = "block";
                     fetch("extracted_assets/shaders/" + data.file)
                         .then(r => r.text())
-                        .then(code => loadProgram(code))
-                        .catch(e => console.error(e));
+                        .then(code => loadProgram(code));
                 } else if (data.type === "uniforms") {
                     uniforms = { ...uniforms, ...data.values };
                 } else if (data.type === "blackout") {
                     blackout.style.display = data.state ? "block" : "none";
                 } else if (data.type === "masks") {
-                    applyMasks(data.windows);
+                    applyMasksAndSurfaces(data.windows);
                 } else if (data.type === "youtube") {
                     canvas.style.display = "none";
-                    gifPlayer.style.display = "none";
+                    globalGif.style.display = "none";
                     ytPlayer.style.display = "block";
                     ytPlayer.src = "https://www.youtube-nocookie.com/embed/" + data.id + "?autoplay=1&controls=0&loop=1&playlist=" + data.id;
                 } else if (data.type === "gif") {
                     canvas.style.display = "none";
                     ytPlayer.style.display = "none";
-                    gifPlayer.style.display = "block";
-                    gifPlayer.src = data.url;
+                    globalGif.style.display = "block";
+                    globalGif.src = data.url;
                 }
             });
         });

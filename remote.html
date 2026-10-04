@@ -65,6 +65,18 @@
         button.btn-blackout { background: #221419; border-color: var(--accent); color: var(--accent); }
         button.btn-add { background: #132433; border-color: var(--cyan); color: var(--cyan); }
 
+        /* Window selector bar */
+        .window-tabs {
+            display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px;
+        }
+        .window-tab {
+            padding: 8px 14px; font-size: 0.85rem; border-radius: 10px; white-space: nowrap;
+            background: #181c2b; border: 1px solid rgba(255,255,255,0.1); color: var(--text-dim);
+        }
+        .window-tab.active {
+            background: rgba(0, 210, 255, 0.2); border-color: var(--cyan); color: #fff; font-weight: bold;
+        }
+
         .shaders-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .shader-card {
             background: var(--card); border-radius: 10px; overflow: hidden;
@@ -92,7 +104,7 @@
         }
 
         #maskCanvas {
-            width: 100%; height: 210px; background: #000; border-radius: 12px;
+            width: 100%; height: 220px; background: #000; border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.15); touch-action: none;
         }
     </style>
@@ -122,19 +134,26 @@
         </div>
     </div>
 
-    <!-- MASK EDITOR -->
+    <!-- MASK & TARGET WINDOW SELECTOR -->
     <div class="section">
-        <div class="section-title">✂️ WINDOW MASKING (Drag Corners to Fit Walls/Glass)</div>
+        <div class="section-title">✂️ WINDOW MASKING & TARGET SELECTION</div>
+        
+        <!-- Pasek wyboru okna: do którego okna przypisujesz kolejny GIF -->
+        <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:6px;">Select active target window for media:</div>
+        <div class="window-tabs" id="windowTabs">
+            <button class="window-tab active" onclick="selectTargetWindow(-1)">🌍 ALL / FULL ROOM</button>
+        </div>
+
         <canvas id="maskCanvas"></canvas>
         <div style="display:flex; justify-content:space-between; margin-top:8px;">
-            <button style="font-size:0.8rem; padding:8px 12px;" onclick="resetMasks()">Clear All Masks (Full Room)</button>
-            <span style="font-size:0.8rem; color:var(--text-dim); line-height:30px;" id="winCount">Windows: 0 (Full Wall)</span>
+            <button style="font-size:0.8rem; padding:8px 12px;" onclick="resetMasks()">Clear All Windows</button>
+            <span style="font-size:0.8rem; color:var(--text-dim); line-height:30px;" id="winCount">Windows: 0</span>
         </div>
     </div>
 
-    <!-- GIFS & MEMES (Curated high-res loops) -->
+    <!-- GIFS & MEMES (Targeted per window!) -->
     <div class="section">
-        <div class="section-title">🐱 GIFS & MEMES PROJECTION</div>
+        <div class="section-title" id="gifSectionTitle">🐱 ASSIGN GIF TO: 🌍 ALL / FULL ROOM</div>
         <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:8px;">
             <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('party')">🎉 Party & Dance</button>
             <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('trippy')">🌀 Trippy & Neon</button>
@@ -144,9 +163,9 @@
         <div class="shaders-grid" id="gifGrid"></div>
     </div>
 
-    <!-- CONTROLS -->
+    <!-- EFFECT CONTROLS -->
     <div class="section">
-        <div class="section-title">🎛️ EFFECT CONTROLS</div>
+        <div class="section-title">🎛️ GLOBAL SHADER CONTROLS</div>
         <div class="slider-group">
             <div class="slider-label"><span>Animation Speed</span><span id="val_speed">1.0</span></div>
             <input type="range" min="0.1" max="3.0" step="0.1" value="1.0" oninput="updateUniform('u_timeSpeed', this.value, 'val_speed')">
@@ -188,6 +207,8 @@
         let conn = null;
         let isBlackout = false;
         let targetPeerId = null;
+
+        let activeWindowIndex = -1; // -1 = All / Global, 0 = Window 1, 1 = Window 2...
 
         const peer = new Peer();
 
@@ -254,7 +275,6 @@
             if (id) send({ type: "youtube", id: id });
         }
 
-        // BAZA SPRAWDZONYCH GIFÓW I MEMÓW (Zawsze działają bez blokad API)
         const gifDatabase = {
             party: [
                 { name: "Neon Cat Dance", url: "https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif" },
@@ -301,7 +321,16 @@
                 card.onclick = () => {
                     document.querySelectorAll(".shader-card").forEach(c => c.classList.remove("active"));
                     card.classList.add("active");
-                    send({ type: "gif", url: g.url });
+                    
+                    if (activeWindowIndex === -1) {
+                        // Globalny GIF na cały ekran
+                        send({ type: "gif", url: g.url });
+                    } else if (windows[activeWindowIndex]) {
+                        // Indywidualny GIF dla tego konkretnego okna!
+                        windows[activeWindowIndex].mediaUrl = g.url;
+                        drawMaskCanvas();
+                        send({ type: "masks", windows: windows });
+                    }
                 };
                 grid.appendChild(card);
             });
@@ -336,11 +365,27 @@
             listContainer.appendChild(card);
         });
 
-        // EDYTOR MASEK - MASKOWANIE OKIEN
+        // WINDOW MASK & TARGET SYSTEM
         const mCanvas = document.getElementById("maskCanvas");
         const mCtx = mCanvas.getContext("2d");
         let windows = [];
         let draggingPoint = null;
+
+        function updateWindowTabs() {
+            const tabs = document.getElementById("windowTabs");
+            tabs.innerHTML = `<button class="window-tab ${activeWindowIndex === -1 ? 'active' : ''}" onclick="selectTargetWindow(-1)">🌍 ALL / FULL ROOM</button>`;
+            windows.forEach((w, i) => {
+                tabs.innerHTML += `<button class="window-tab ${activeWindowIndex === i ? 'active' : ''}" onclick="selectTargetWindow(${i})">🪟 WINDOW #${i + 1} ${w.mediaUrl ? '✅' : ''}</button>`;
+            });
+            const title = activeWindowIndex === -1 ? "🌍 ALL / FULL ROOM" : `🪟 WINDOW #${activeWindowIndex + 1}`;
+            document.getElementById("gifSectionTitle").innerText = "🐱 ASSIGN GIF TO: " + title;
+        }
+
+        function selectTargetWindow(idx) {
+            activeWindowIndex = idx;
+            updateWindowTabs();
+            drawMaskCanvas();
+        }
 
         function resizeMaskCanvas() {
             mCanvas.width = mCanvas.clientWidth;
@@ -352,9 +397,10 @@
 
         function addWindow() {
             const w = 0.35, h = 0.45;
-            const x = 0.1 + (windows.length * 0.12) % 0.5;
+            const x = 0.08 + (windows.length * 0.15) % 0.55;
             const y = 0.2;
             windows.push({
+                mediaUrl: null, // brak osobnego GIFa domyślnie
                 points: [
                     { x: x, y: y },
                     { x: x + w, y: y },
@@ -362,22 +408,24 @@
                     { x: x, y: y + h }
                 ]
             });
+            activeWindowIndex = windows.length - 1; // Przełącz od razu na nowo dodane okno
             document.getElementById("winCount").innerText = "Windows: " + windows.length;
+            updateWindowTabs();
             drawMaskCanvas();
             send({ type: "masks", windows: windows });
         }
 
         function resetMasks() {
             windows = [];
-            document.getElementById("winCount").innerText = "Windows: 0 (Full Wall)";
+            activeWindowIndex = -1;
+            document.getElementById("winCount").innerText = "Windows: 0";
+            updateWindowTabs();
             drawMaskCanvas();
             send({ type: "masks", windows: windows });
         }
 
         function drawMaskCanvas() {
             mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
-            
-            // Czarna ściana pokoju
             mCtx.fillStyle = "#0c0e17";
             mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
 
@@ -392,6 +440,7 @@
             }
 
             windows.forEach((win, wIdx) => {
+                const isSelected = activeWindowIndex === wIdx;
                 mCtx.beginPath();
                 win.points.forEach((p, pIdx) => {
                     const px = p.x * mCanvas.width;
@@ -400,28 +449,25 @@
                     else mCtx.lineTo(px, py);
                 });
                 mCtx.closePath();
-                // Wnętrze okna jest rozświetlone błękitem (tu świeci projektor!)
-                mCtx.fillStyle = "rgba(0, 210, 255, 0.4)";
+                mCtx.fillStyle = isSelected ? "rgba(0, 255, 136, 0.35)" : "rgba(0, 210, 255, 0.2)";
                 mCtx.fill();
-                mCtx.strokeStyle = "#00d2ff";
-                mCtx.lineWidth = 2;
+                mCtx.strokeStyle = isSelected ? "#00ff88" : "#00d2ff";
+                mCtx.lineWidth = isSelected ? 3 : 1.5;
                 mCtx.stroke();
 
-                // Numer okna w środku
                 const centerX = (win.points[0].x + win.points[1].x + win.points[2].x + win.points[3].x) / 4 * mCanvas.width;
                 const centerY = (win.points[0].y + win.points[1].y + win.points[2].y + win.points[3].y) / 4 * mCanvas.height;
                 mCtx.fillStyle = "#ffffff";
                 mCtx.font = "bold 13px sans-serif";
                 mCtx.textAlign = "center";
-                mCtx.fillText("Window #" + (wIdx + 1), centerX, centerY);
+                mCtx.fillText(`Window #${wIdx + 1} ${win.mediaUrl ? '🎬' : ''}`, centerX, centerY);
 
-                // Czerwone narożniki do przeciągania
                 win.points.forEach((p) => {
                     const px = p.x * mCanvas.width;
                     const py = p.y * mCanvas.height;
                     mCtx.beginPath();
-                    mCtx.arc(px, py, 9, 0, Math.PI * 2);
-                    mCtx.fillStyle = "#ff4b72";
+                    mCtx.arc(px, py, isSelected ? 10 : 7, 0, Math.PI * 2);
+                    mCtx.fillStyle = isSelected ? "#00ff88" : "#ff4b72";
                     mCtx.fill();
                     mCtx.strokeStyle = "#fff";
                     mCtx.lineWidth = 2;
@@ -442,11 +488,15 @@
 
         function findPoint(pos) {
             const threshold = 30 / mCanvas.width;
-            for (let w of windows) {
-                for (let p of w.points) {
+            for (let i = 0; i < windows.length; i++) {
+                for (let p of windows[i].points) {
                     const dx = p.x - pos.x;
                     const dy = p.y - pos.y;
-                    if (Math.sqrt(dx*dx + dy*dy) < threshold) return p;
+                    if (Math.sqrt(dx*dx + dy*dy) < threshold) {
+                        activeWindowIndex = i; // Kliknięcie punktu automatycznie aktywuje to okno
+                        updateWindowTabs();
+                        return p;
+                    }
                 }
             }
             return null;
@@ -455,6 +505,7 @@
         mCanvas.addEventListener("pointerdown", (e) => {
             const pos = getPos(e);
             draggingPoint = findPoint(pos);
+            drawMaskCanvas();
         });
 
         mCanvas.addEventListener("pointermove", (e) => {
