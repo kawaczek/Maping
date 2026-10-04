@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Display - HY320 Mini</title>
+    <title>Display - Projector</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body, html {
@@ -11,6 +11,7 @@
             background: #000000;
             overflow: hidden;
             font-family: -apple-system, sans-serif;
+            cursor: none;
         }
         #stage {
             position: absolute;
@@ -46,7 +47,6 @@
             z-index: 20;
             display: none;
         }
-        /* Kartka z PIN-em na start */
         #pinBanner {
             position: absolute;
             top: 25px; left: 25px;
@@ -90,11 +90,10 @@
 
         <div id="blackout"></div>
 
-        <!-- Wielki, czytelny PIN do wpisania w telefonie -->
         <div id="pinBanner">
-            <h2>KOD PAROWANIA PROJEKTORA:</h2>
+            <h2>PAIRING PIN CODE:</h2>
             <div id="pinCode">----</div>
-            <p id="pinSub">Wejdź w telefonie na <b>maping.pages.dev/remote.html</b> i wpisz ten kod</p>
+            <p id="pinSub">Open <b>maping.pages.dev/remote.html</b> on phone & enter PIN</p>
         </div>
     </div>
 
@@ -108,7 +107,6 @@
         const pinBanner = document.getElementById("pinBanner");
         const pinSub = document.getElementById("pinSub");
 
-        // Generujemy losowy, prosty 4-cyfrowy kod PIN (np. 4821)
         const roomPin = Math.floor(1000 + Math.random() * 9000).toString();
         const peerId = "hy320-room-" + roomPin;
 
@@ -246,7 +244,6 @@
             maskPolygons.innerHTML = svgHtml;
         }
 
-        // Rejestracja w chmurze PeerJS z unikalnym ID pokoju
         const peer = new Peer(peerId);
 
         peer.on("open", () => {
@@ -256,7 +253,7 @@
         peer.on("connection", (conn) => {
             pinBanner.classList.add("connected");
             pinCodeEl.style.color = "#00ff88";
-            pinSub.innerHTML = "Połączono z telefonem! ✨ (Znikam za 5s...)";
+            pinSub.innerHTML = "Connected to Phone! ✨ (Hiding in 5s...)";
             setTimeout(() => {
                 pinBanner.style.opacity = "0";
                 pinBanner.style.pointerEvents = "none";

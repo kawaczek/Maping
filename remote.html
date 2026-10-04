@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pilot - HY320 Mini</title>
+    <title>Remote - Projector Controller</title>
     <style>
         :root {
             --bg: #10131d;
@@ -28,7 +28,6 @@
         }
         .status-dot.online { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
         
-        /* Modal parowania PIN */
         #pinModal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(10,12,18,0.95); z-index: 999;
@@ -100,69 +99,68 @@
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
-    <!-- MODAL WPISYWANIA KODU PIN Z EKRANU -->
     <div id="pinModal">
         <div class="pin-box">
-            <h2>🔑 POŁĄCZ Z PROJEKTOREM</h2>
-            <p>Przepisz 4-cyfrowy kod PIN, który wyświetla się na ekranie Twojego rzutnika:</p>
+            <h2>🔑 CONNECT TO PROJECTOR</h2>
+            <p>Enter the 4-digit PIN code displayed on your projector screen:</p>
             <input type="tel" id="inputPin" class="pin-input" maxlength="4" placeholder="----" autofocus />
-            <button class="btn-connect" onclick="connectWithPin()">POŁĄCZ 🚀</button>
+            <button class="btn-connect" onclick="connectWithPin()">CONNECT 🚀</button>
         </div>
     </div>
 
     <header>
-        <h1>📱 PILOT PROJEKTORA</h1>
+        <h1>📱 REMOTE CONTROLLER</h1>
         <div id="connStatus" onclick="document.getElementById('pinModal').style.display='flex'">
-            <span class="status-dot" id="dot"></span><span id="statusText">Brak połączenia</span>
+            <span class="status-dot" id="dot"></span><span id="statusText">Disconnected</span>
         </div>
     </header>
 
     <div class="section">
         <div class="quick-row">
             <button class="btn-blackout" id="blackoutBtn" onclick="toggleBlackout()">🌑 BLACKOUT</button>
-            <button class="btn-add" onclick="addWindow()">➕ DODAJ OKNO</button>
+            <button class="btn-add" onclick="addWindow()">➕ ADD WINDOW</button>
         </div>
     </div>
 
     <div class="section">
-        <div class="section-title">✂️ EDYTOR MASEK (Przeciągaj punkty okna)</div>
+        <div class="section-title">✂️ MASK EDITOR (Drag window corners)</div>
         <canvas id="maskCanvas"></canvas>
         <div style="display:flex; justify-content:space-between; margin-top:8px;">
-            <button style="font-size:0.8rem; padding:8px 12px;" onclick="resetMasks()">Wyczyść maski</button>
-            <span style="font-size:0.8rem; color:var(--text-dim); line-height:30px;" id="winCount">Okna: 0</span>
+            <button style="font-size:0.8rem; padding:8px 12px;" onclick="resetMasks()">Clear Masks</button>
+            <span style="font-size:0.8rem; color:var(--text-dim); line-height:30px;" id="winCount">Windows: 0</span>
         </div>
     </div>
 
     <div class="section">
-        <div class="section-title">🎛️ PARAMETRY EFEKTU</div>
+        <div class="section-title">🎛️ EFFECT CONTROLS</div>
         <div class="slider-group">
-            <div class="slider-label"><span>Prędkość animacji</span><span id="val_speed">1.0</span></div>
+            <div class="slider-label"><span>Animation Speed</span><span id="val_speed">1.0</span></div>
             <input type="range" min="0.1" max="3.0" step="0.1" value="1.0" oninput="updateUniform('u_timeSpeed', this.value, 'val_speed')">
         </div>
         <div class="slider-group">
-            <div class="slider-label"><span>Kolor (Hue Shift)</span><span id="val_hue">0.0</span></div>
+            <div class="slider-label"><span>Color (Hue Shift)</span><span id="val_hue">0.0</span></div>
             <input type="range" min="0.0" max="1.0" step="0.05" value="0.0" oninput="updateUniform('u_hueShift', this.value, 'val_hue')">
         </div>
         <div class="slider-group">
-            <div class="slider-label"><span>Jasność światła</span><span id="val_bright">1.0</span></div>
+            <div class="slider-label"><span>Brightness</span><span id="val_bright">1.0</span></div>
             <input type="range" min="0.1" max="2.0" step="0.1" value="1.0" oninput="updateUniform('u_brightness', this.value, 'val_bright')">
         </div>
         <div class="slider-group">
-            <div class="slider-label"><span>Zoom / Rozmiar</span><span id="val_zoom">1.0</span></div>
+            <div class="slider-label"><span>Zoom / Scale</span><span id="val_zoom">1.0</span></div>
             <input type="range" min="0.3" max="3.0" step="0.1" value="1.0" oninput="updateUniform('u_zoom', this.value, 'val_zoom')">
         </div>
     </div>
 
     <div class="section">
-        <div class="section-title">▶️ RZUĆ FILM Z YOUTUBE</div>
+        <div class="section-title">▶️ CAST YOUTUBE VIDEO</div>
         <div class="yt-box">
-            <input type="text" id="ytUrl" placeholder="Wklej link YouTube lub ID...">
-            <button onclick="sendYouTube()">RZUĆ</button>
+            <input type="text" id="ytUrl" placeholder="Paste YouTube link or ID...">
+            <button onclick="sendYouTube()">CAST</button>
         </div>
     </div>
 
     <div class="section">
-        <div class="section-title">🎨 WYBIERZ SHADER PROJEKCJI</div>
+        <div class="section-title">🎨 SELECT PROJECTION SHADER</div>
         <div class="shaders-grid" id="shaderList"></div>
     </div>
 
@@ -180,32 +178,31 @@
         function connectWithPin() {
             const pin = inputPin.value.trim();
             if (pin.length !== 4) {
-                alert("Wpisz poprawny 4-cyfrowy kod PIN z ekranu rzutnika!");
+                alert("Please enter the 4-digit PIN code from your projector screen!");
                 return;
             }
             targetPeerId = "hy320-room-" + pin;
-            statusText.innerText = "Łączę z #" + pin + "...";
+            statusText.innerText = "Connecting to #" + pin + "...";
 
             conn = peer.connect(targetPeerId);
 
             conn.on("open", () => {
                 dot.className = "status-dot online";
-                statusText.innerText = "Połączono (#" + pin + ")";
+                statusText.innerText = "Connected (#" + pin + ")";
                 pinModal.style.display = "none";
                 localStorage.setItem("last_maping_pin", pin);
             });
 
             conn.on("close", () => {
                 dot.className = "status-dot";
-                statusText.innerText = "Rozłączono";
+                statusText.innerText = "Disconnected";
             });
 
             conn.on("error", (err) => {
-                alert("Nie udało się połączyć z kodem " + pin + ". Upewnij się, że projektor ma otwartą stronę!");
+                alert("Could not connect to PIN " + pin + ". Make sure the projector has the display page open!");
             });
         }
 
-        // Auto-wypełnianie ostatniego PIN-u
         const savedPin = localStorage.getItem("last_maping_pin");
         if (savedPin) {
             inputPin.value = savedPin;
@@ -238,7 +235,7 @@
         const shaders = [
             { file: "plasma_glow_frag.glsl", name: "Plasma Glow", img: "plasmaGlow.png" },
             { file: "flow_gradient_frag.glsl", name: "Flow Gradient", img: "flowGradient.png" },
-            { file: "kaleido2_frag.glsl", name: "Kalejdoskop", img: "kaleido2.png" },
+            { file: "kaleido2_frag.glsl", name: "Kaleidoscope", img: "kaleido2.png" },
             { file: "rainbow_frag.glsl", name: "Rainbow", img: "rainbow.png" },
             { file: "simplex_frag.glsl", name: "Simplex Noise", img: "simplex.png" },
             { file: "color_explosion_frag.glsl", name: "Explosion", img: "colorExplosion.png" },
@@ -288,14 +285,14 @@
                     { x: x, y: y + h }
                 ]
             });
-            document.getElementById("winCount").innerText = "Okna: " + windows.length;
+            document.getElementById("winCount").innerText = "Windows: " + windows.length;
             drawMaskCanvas();
             send({ type: "masks", windows: windows });
         }
 
         function resetMasks() {
             windows = [];
-            document.getElementById("winCount").innerText = "Okna: 0";
+            document.getElementById("winCount").innerText = "Windows: 0";
             drawMaskCanvas();
             send({ type: "masks", windows: windows });
         }

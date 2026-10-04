@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Projection Mapping Hub - HY320 Mini</title>
+    <title>Projection Mapping Hub</title>
     <style>
         :root {
             --bg: #0f111a;
@@ -116,43 +116,35 @@
             color: var(--text-dim);
             border: 1px dashed rgba(255,255,255,0.1);
         }
-        .pin {
-            font-family: monospace;
-            color: var(--cyan);
-            font-weight: bold;
-            font-size: 1.1rem;
-            letter-spacing: 2px;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="logo-box">
-            <h1>📽️ MAPING HUB</h1>
-            <p>System projekcji i mapowania okien dla HY320 Mini</p>
+            <h1>📽️ MAPPING HUB</h1>
+            <p>Projection Mapping & VJ Engine for Projectors</p>
         </div>
 
         <div class="cards">
             <a href="display.html" class="card">
                 <div class="icon">🖥️</div>
                 <div class="info">
-                    <h2>EKRAN PROJEKTORA <span class="badge">Dla Rzutnika</span></h2>
-                    <p>Otwórz ten link w przeglądarce projektora na pełnym ekranie (F11).</p>
+                    <h2>PROJECTOR DISPLAY <span class="badge">Projector</span></h2>
+                    <p>Open this link in your projector's browser in fullscreen mode.</p>
                 </div>
             </a>
 
             <a href="remote.html" class="card">
                 <div class="icon">📱</div>
                 <div class="info">
-                    <h2>PILOT W TELEFONIE <span class="badge" style="background:rgba(255,75,114,0.15);color:var(--accent);">W dłoni</span></h2>
-                    <p>Wybieraj shadery, YouTube, suwaki i rysuj maski na oknach w czasie rzeczywistym.</p>
+                    <h2>MOBILE REMOTE <span class="badge" style="background:rgba(255,75,114,0.15);color:var(--accent);">Controller</span></h2>
+                    <p>Pick shaders, YouTube videos, sliders, and adjust masks live.</p>
                 </div>
             </a>
         </div>
 
         <div class="room-box">
-            🐺✨ <b>Status:</b> Gotowy do wdrożenia na Cloudflare Pages.<br>
-            Połączony z PeerJS Cloud / WebRTC.
+            🐺✨ <b>Architecture:</b> Cloudflare Pages + WebGL + PeerJS P2P (Zero Server Lag).
         </div>
     </div>
 </body>
