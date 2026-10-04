@@ -154,6 +154,17 @@
     <!-- GIFS & MEMES (Targeted per window!) -->
     <div class="section">
         <div class="section-title" id="gifSectionTitle">🐱 ASSIGN GIF TO: 🌍 ALL / FULL ROOM</div>
+        
+        <!-- Suwak dopasowania rozmiaru GIF-a w oknie -->
+        <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.07);">
+            <div class="slider-label"><span>🔍 Window GIF Size / Zoom</span><span id="val_gif_scale">100%</span></div>
+            <input type="range" min="0.2" max="2.5" step="0.05" value="1.0" oninput="updateGifScale(this.value)">
+            <div style="display:flex; justify-content:space-between; margin-top:6px;">
+                <button style="padding:4px 8px; font-size:0.75rem;" onclick="setGifFit('contain')">Fit Inside (Contain)</button>
+                <button style="padding:4px 8px; font-size:0.75rem;" onclick="setGifFit('cover')">Fill Window (Cover)</button>
+            </div>
+        </div>
+
         <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:8px;">
             <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('party')">🎉 Party & Dance</button>
             <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('trippy')">🌀 Trippy & Neon</button>
@@ -341,7 +352,26 @@
                 grid.appendChild(card);
             });
         }
-        filterGifs("party");
+        function updateGifScale(val) {
+            document.getElementById("val_gif_scale").innerText = Math.round(val * 100) + "%";
+            const scale = parseFloat(val);
+            if (activeWindowIndex === -1) {
+                // Skalowanie globalnego GIF-a
+                send({ type: "gif_scale", scale: scale });
+            } else if (windows[activeWindowIndex]) {
+                windows[activeWindowIndex].scale = scale;
+                send({ type: "masks", windows: windows });
+            }
+        }
+
+        function setGifFit(mode) {
+            if (activeWindowIndex === -1) {
+                send({ type: "gif_fit", fit: mode });
+            } else if (windows[activeWindowIndex]) {
+                windows[activeWindowIndex].fit = mode;
+                send({ type: "masks", windows: windows });
+            }
+        }
 
         const shaders = [
             { file: "plasma_glow_frag.glsl", name: "Plasma Glow", img: "plasmaGlow.png" },

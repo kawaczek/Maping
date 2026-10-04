@@ -312,10 +312,12 @@
                 // Jeśli okno ma przypisany własny dedykowany GIF/wideo:
                 if (w.mediaUrl) {
                     const polyPts = w.points.map(p => `${p.x * 100}% ${p.y * 100}%`).join(", ");
+                    const scale = w.scale || 1.0;
+                    const fit = w.fit || "contain";
                     const surfaceDiv = document.createElement("div");
                     surfaceDiv.className = "window-surface";
                     surfaceDiv.style.clipPath = `polygon(${polyPts})`;
-                    surfaceDiv.innerHTML = `<img src="${w.mediaUrl}" style="width:100%; height:100%; object-fit:cover;" />`;
+                    surfaceDiv.innerHTML = `<img src="${w.mediaUrl}" style="width:100%; height:100%; object-fit:${fit}; transform:scale(${scale}); transform-origin:center;" />`;
                     windowsLayer.appendChild(surfaceDiv);
                 }
             });
@@ -358,6 +360,10 @@
                     ytPlayer.style.display = "none";
                     globalGif.style.display = "block";
                     globalGif.src = data.url;
+                } else if (data.type === "gif_scale") {
+                    globalGif.style.transform = `scale(${data.scale})`;
+                } else if (data.type === "gif_fit") {
+                    globalGif.style.objectFit = data.fit;
                 }
             });
         });
