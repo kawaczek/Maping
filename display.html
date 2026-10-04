@@ -10,7 +10,7 @@
             width: 100%; height: 100%;
             background: #000000;
             overflow: hidden;
-            cursor: none;
+            font-family: -apple-system, sans-serif;
         }
         #stage {
             position: absolute;
@@ -46,21 +46,31 @@
             z-index: 20;
             display: none;
         }
-        #statusOverlay {
+        /* Kartka z PIN-em na start */
+        #pinBanner {
             position: absolute;
-            bottom: 20px; right: 20px;
-            background: rgba(0,0,0,0.75);
-            color: #00d2ff;
-            font-family: monospace;
-            padding: 8px 14px;
-            border-radius: 8px;
-            border: 1px solid rgba(0,210,255,0.3);
-            font-size: 14px;
-            z-index: 30;
-            transition: opacity 1s ease;
+            top: 25px; left: 25px;
+            background: rgba(15, 17, 26, 0.9);
+            border: 2px solid #00d2ff;
+            box-shadow: 0 0 25px rgba(0, 210, 255, 0.4);
+            border-radius: 16px;
+            padding: 18px 24px;
+            color: #ffffff;
+            z-index: 40;
+            backdrop-filter: blur(8px);
+            transition: all 0.5s ease;
+        }
+        #pinBanner h2 { font-size: 1rem; color: #8b9bb4; margin-bottom: 6px; }
+        #pinCode {
+            font-size: 2.8rem; font-weight: 900; letter-spacing: 6px;
+            color: #00d2ff; font-family: monospace; line-height: 1;
+        }
+        #pinBanner p { font-size: 0.85rem; color: #8b9bb4; margin-top: 6px; }
+        #pinBanner.connected {
+            border-color: #00ff88;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
         }
     </style>
-    <!-- PeerJS do bezpośredniego połączenia P2P z telefonem bez serwera -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
@@ -68,38 +78,44 @@
         <canvas id="webglCanvas"></canvas>
         <iframe id="ytPlayer" allow="autoplay"></iframe>
         
-        <!-- Maska SVG wycinająca okna -->
         <svg id="maskOverlay">
             <defs>
                 <mask id="windowMask">
-                    <!-- Białe tło = widoczne światło -->
                     <rect width="100%" height="100%" fill="white" id="maskBase" />
-                    <!-- Dynamiczne wielokąty wycinające okna -->
                     <g id="maskPolygons"></g>
                 </mask>
             </defs>
-            <!-- Cały ekran z nałożoną maską -->
             <rect width="100%" height="100%" fill="black" mask="url(#windowMask)" id="maskShade" style="display:none;" />
         </svg>
 
         <div id="blackout"></div>
-        <div id="statusOverlay">Projektor ID: Łączenie...</div>
+
+        <!-- Wielki, czytelny PIN do wpisania w telefonie -->
+        <div id="pinBanner">
+            <h2>KOD PAROWANIA PROJEKTORA:</h2>
+            <div id="pinCode">----</div>
+            <p id="pinSub">Wejdź w telefonie na <b>maping.pages.dev/remote.html</b> i wpisz ten kod</p>
+        </div>
     </div>
 
     <script>
         const canvas = document.getElementById("webglCanvas");
-        const statusOverlay = document.getElementById("statusOverlay");
         const blackout = document.getElementById("blackout");
         const maskPolygons = document.getElementById("maskPolygons");
         const maskShade = document.getElementById("maskShade");
         const ytPlayer = document.getElementById("ytPlayer");
+        const pinCodeEl = document.getElementById("pinCode");
+        const pinBanner = document.getElementById("pinBanner");
+        const pinSub = document.getElementById("pinSub");
+
+        // Generujemy losowy, prosty 4-cyfrowy kod PIN (np. 4821)
+        const roomPin = Math.floor(1000 + Math.random() * 9000).toString();
+        const peerId = "hy320-room-" + roomPin;
 
         let gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
         let currentProgram = null;
-        let animationFrameId = null;
         let startTime = Date.now();
 
-        // Parametry domyślne shaderów
         let uniforms = {
             u_timeSpeed: 1.0,
             u_zoom: 1.0,
@@ -110,7 +126,6 @@
             u_frequency: 1.0
         };
 
-        // Standardowy quad fullscreen
         const vsSource = `
             attribute vec2 aPosition;
             varying vec2 vUV;
@@ -120,7 +135,6 @@
             }
         `;
 
-        // Domyślny piękny shader plazmy
         let defaultFrag = `
             precision mediump float;
             varying vec2 vUV;
@@ -160,7 +174,6 @@
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
             if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                console.error("Błąd shadera:", gl.getShaderInfoLog(shader));
                 gl.deleteShader(shader);
                 return null;
             }
@@ -178,10 +191,7 @@
             gl.attachShader(prog, fs);
             gl.linkProgram(prog);
 
-            if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-                console.error("Link error:", gl.getProgramInfoLog(prog));
-                return;
-            }
+            if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) return;
 
             const posBuffer = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
@@ -217,11 +227,10 @@
 
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
             }
-            animationFrameId = requestAnimationFrame(render);
+            requestAnimationFrame(render);
         }
         render();
 
-        // Obsługa masek
         function applyMasks(windows) {
             if (!windows || windows.length === 0) {
                 maskShade.style.display = "none";
@@ -231,25 +240,27 @@
             maskShade.style.display = "block";
             let svgHtml = "";
             windows.forEach(w => {
-                // punkty przeliczone na piksele
                 const pts = w.points.map(p => `${p.x * window.innerWidth},${p.y * window.innerHeight}`).join(" ");
                 svgHtml += `<polygon points="${pts}" fill="black" />`;
             });
             maskPolygons.innerHTML = svgHtml;
         }
 
-        // P2P PeerJS: Stałe ID projektora "hy320-kawak"
-        const peer = new Peer("hy320-kawak");
+        // Rejestracja w chmurze PeerJS z unikalnym ID pokoju
+        const peer = new Peer(peerId);
 
-        peer.on("open", (id) => {
-            statusOverlay.innerText = "Projektor GOTOWY! (ID: " + id + ")";
-            setTimeout(() => { statusOverlay.style.opacity = "0.2"; }, 4000);
+        peer.on("open", () => {
+            pinCodeEl.innerText = roomPin;
         });
 
         peer.on("connection", (conn) => {
-            statusOverlay.innerText = "Telefon POŁĄCZONY! 📱✨";
-            statusOverlay.style.opacity = "1";
-            setTimeout(() => { statusOverlay.style.opacity = "0"; }, 3000);
+            pinBanner.classList.add("connected");
+            pinCodeEl.style.color = "#00ff88";
+            pinSub.innerHTML = "Połączono z telefonem! ✨ (Znikam za 5s...)";
+            setTimeout(() => {
+                pinBanner.style.opacity = "0";
+                pinBanner.style.pointerEvents = "none";
+            }, 5000);
 
             conn.on("data", (data) => {
                 if (data.type === "shader") {
@@ -271,11 +282,6 @@
                     ytPlayer.src = "https://www.youtube-nocookie.com/embed/" + data.id + "?autoplay=1&controls=0&loop=1&playlist=" + data.id;
                 }
             });
-        });
-
-        peer.on("error", (err) => {
-            console.error(err);
-            statusOverlay.innerText = "P2P info: " + err.type;
         });
     </script>
 </body>

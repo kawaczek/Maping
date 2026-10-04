@@ -28,25 +28,45 @@
         }
         .status-dot.online { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
         
+        /* Modal parowania PIN */
+        #pinModal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10,12,18,0.95); z-index: 999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 24px; text-align: center;
+        }
+        .pin-box {
+            background: var(--card); border: 1px solid rgba(255,255,255,0.1);
+            padding: 24px; border-radius: 20px; max-width: 380px; width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .pin-box h2 { font-size: 1.3rem; margin-bottom: 8px; color: #fff; }
+        .pin-box p { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 20px; line-height: 1.4; }
+        .pin-input {
+            width: 100%; font-size: 2.2rem; text-align: center; letter-spacing: 10px;
+            background: #0f111a; border: 2px solid rgba(0,210,255,0.3); color: var(--cyan);
+            border-radius: 12px; padding: 10px; margin-bottom: 16px; font-family: monospace; outline: none;
+        }
+        .pin-input:focus { border-color: var(--cyan); }
+        .btn-connect {
+            width: 100%; background: linear-gradient(135deg, var(--accent), var(--cyan));
+            color: #fff; border: none; padding: 14px; border-radius: 12px; font-size: 1.05rem; font-weight: bold; cursor: pointer;
+        }
+
         .section { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .section-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 12px; }
 
-        /* Szybkie akcje */
         .quick-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         button {
             background: var(--card); border: 1px solid rgba(255,255,255,0.1);
             color: var(--text); padding: 12px; border-radius: 12px;
-            font-size: 0.95rem; font-weight: 600; cursor: pointer;
-            transition: all 0.2s;
+            font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
         }
         button:active { transform: scale(0.97); }
         button.btn-blackout { background: #221419; border-color: var(--accent); color: var(--accent); }
         button.btn-add { background: #132433; border-color: var(--cyan); color: var(--cyan); }
 
-        /* Kafelki shaderów */
-        .shaders-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
-        }
+        .shaders-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .shader-card {
             background: var(--card); border-radius: 10px; overflow: hidden;
             border: 2px solid transparent; text-align: center; cursor: pointer;
@@ -55,7 +75,6 @@
         .shader-card img { width: 100%; height: 70px; object-fit: cover; display: block; }
         .shader-card span { display: block; padding: 6px 2px; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* Suwaki */
         .slider-group { margin-bottom: 14px; }
         .slider-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
         input[type="range"] {
@@ -67,14 +86,12 @@
             border-radius: 50%; background: var(--cyan); cursor: pointer;
         }
 
-        /* Pole YouTube */
         .yt-box { display: flex; gap: 8px; }
         .yt-box input {
             flex: 1; background: var(--card); border: 1px solid rgba(255,255,255,0.1);
             border-radius: 10px; padding: 10px 14px; color: var(--text); font-size: 0.9rem; outline: none;
         }
 
-        /* Edytor masek (Canvas) */
         #maskCanvas {
             width: 100%; height: 200px; background: #000; border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.15); touch-action: none;
@@ -83,9 +100,21 @@
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
+    <!-- MODAL WPISYWANIA KODU PIN Z EKRANU -->
+    <div id="pinModal">
+        <div class="pin-box">
+            <h2>🔑 POŁĄCZ Z PROJEKTOREM</h2>
+            <p>Przepisz 4-cyfrowy kod PIN, który wyświetla się na ekranie Twojego rzutnika:</p>
+            <input type="tel" id="inputPin" class="pin-input" maxlength="4" placeholder="----" autofocus />
+            <button class="btn-connect" onclick="connectWithPin()">POŁĄCZ 🚀</button>
+        </div>
+    </div>
+
     <header>
         <h1>📱 PILOT PROJEKTORA</h1>
-        <div id="connStatus"><span class="status-dot" id="dot"></span><span id="statusText">Łączenie...</span></div>
+        <div id="connStatus" onclick="document.getElementById('pinModal').style.display='flex'">
+            <span class="status-dot" id="dot"></span><span id="statusText">Brak połączenia</span>
+        </div>
     </header>
 
     <div class="section">
@@ -95,7 +124,6 @@
         </div>
     </div>
 
-    <!-- MASKOWANIE OKIEN -->
     <div class="section">
         <div class="section-title">✂️ EDYTOR MASEK (Przeciągaj punkty okna)</div>
         <canvas id="maskCanvas"></canvas>
@@ -105,32 +133,26 @@
         </div>
     </div>
 
-    <!-- SUWAKI STEROWANIA -->
     <div class="section">
         <div class="section-title">🎛️ PARAMETRY EFEKTU</div>
-        
         <div class="slider-group">
             <div class="slider-label"><span>Prędkość animacji</span><span id="val_speed">1.0</span></div>
             <input type="range" min="0.1" max="3.0" step="0.1" value="1.0" oninput="updateUniform('u_timeSpeed', this.value, 'val_speed')">
         </div>
-
         <div class="slider-group">
             <div class="slider-label"><span>Kolor (Hue Shift)</span><span id="val_hue">0.0</span></div>
             <input type="range" min="0.0" max="1.0" step="0.05" value="0.0" oninput="updateUniform('u_hueShift', this.value, 'val_hue')">
         </div>
-
         <div class="slider-group">
             <div class="slider-label"><span>Jasność światła</span><span id="val_bright">1.0</span></div>
             <input type="range" min="0.1" max="2.0" step="0.1" value="1.0" oninput="updateUniform('u_brightness', this.value, 'val_bright')">
         </div>
-
         <div class="slider-group">
             <div class="slider-label"><span>Zoom / Rozmiar</span><span id="val_zoom">1.0</span></div>
             <input type="range" min="0.3" max="3.0" step="0.1" value="1.0" oninput="updateUniform('u_zoom', this.value, 'val_zoom')">
         </div>
     </div>
 
-    <!-- YOUTUBE -->
     <div class="section">
         <div class="section-title">▶️ RZUĆ FILM Z YOUTUBE</div>
         <div class="yt-box">
@@ -139,7 +161,6 @@
         </div>
     </div>
 
-    <!-- WYBÓR SHADERÓW -->
     <div class="section">
         <div class="section-title">🎨 WYBIERZ SHADER PROJEKCJI</div>
         <div class="shaders-grid" id="shaderList"></div>
@@ -148,32 +169,50 @@
     <script>
         const dot = document.getElementById("dot");
         const statusText = document.getElementById("statusText");
+        const pinModal = document.getElementById("pinModal");
+        const inputPin = document.getElementById("inputPin");
         let conn = null;
         let isBlackout = false;
+        let targetPeerId = null;
 
-        // PeerJS połączenie z projektorem "hy320-kawak"
         const peer = new Peer();
-        peer.on("open", () => {
-            connectToProjector();
-        });
 
-        function connectToProjector() {
-            conn = peer.connect("hy320-kawak");
+        function connectWithPin() {
+            const pin = inputPin.value.trim();
+            if (pin.length !== 4) {
+                alert("Wpisz poprawny 4-cyfrowy kod PIN z ekranu rzutnika!");
+                return;
+            }
+            targetPeerId = "hy320-room-" + pin;
+            statusText.innerText = "Łączę z #" + pin + "...";
+
+            conn = peer.connect(targetPeerId);
+
             conn.on("open", () => {
                 dot.className = "status-dot online";
-                statusText.innerText = "Połączono!";
+                statusText.innerText = "Połączono (#" + pin + ")";
+                pinModal.style.display = "none";
+                localStorage.setItem("last_maping_pin", pin);
             });
+
             conn.on("close", () => {
                 dot.className = "status-dot";
-                statusText.innerText = "Rozłączono (ponawiam...)";
-                setTimeout(connectToProjector, 2000);
+                statusText.innerText = "Rozłączono";
+            });
+
+            conn.on("error", (err) => {
+                alert("Nie udało się połączyć z kodem " + pin + ". Upewnij się, że projektor ma otwartą stronę!");
             });
         }
 
+        // Auto-wypełnianie ostatniego PIN-u
+        const savedPin = localStorage.getItem("last_maping_pin");
+        if (savedPin) {
+            inputPin.value = savedPin;
+        }
+
         function send(data) {
-            if (conn && conn.open) {
-                conn.send(data);
-            }
+            if (conn && conn.open) conn.send(data);
         }
 
         function toggleBlackout() {
@@ -193,12 +232,9 @@
             let url = document.getElementById("ytUrl").value.trim();
             let match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:.*v=|.*\/))([^?&]+)/);
             let id = match ? match[1] : url;
-            if (id) {
-                send({ type: "youtube", id: id });
-            }
+            if (id) send({ type: "youtube", id: id });
         }
 
-        // Baza shaderów
         const shaders = [
             { file: "plasma_glow_frag.glsl", name: "Plasma Glow", img: "plasmaGlow.png" },
             { file: "flow_gradient_frag.glsl", name: "Flow Gradient", img: "flowGradient.png" },
@@ -227,7 +263,6 @@
             listContainer.appendChild(card);
         });
 
-        // EDYTOR MASEK NA CANVASIE
         const mCanvas = document.getElementById("maskCanvas");
         const mCtx = mCanvas.getContext("2d");
         let windows = [];
@@ -270,7 +305,7 @@
             mCtx.fillStyle = "#181c2b";
             mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
 
-            windows.forEach((win, wIdx) => {
+            windows.forEach((win) => {
                 mCtx.beginPath();
                 win.points.forEach((p, pIdx) => {
                     const px = p.x * mCanvas.width;
@@ -285,8 +320,7 @@
                 mCtx.lineWidth = 2;
                 mCtx.stroke();
 
-                // Rysuj punkty narożników
-                win.points.forEach((p, pIdx) => {
+                win.points.forEach((p) => {
                     const px = p.x * mCanvas.width;
                     const py = p.y * mCanvas.height;
                     mCtx.beginPath();
@@ -300,7 +334,6 @@
             });
         }
 
-        // Dotyk i przeciąganie punktów
         function getPos(e) {
             const rect = mCanvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -312,7 +345,7 @@
         }
 
         function findPoint(pos) {
-            const threshold = 20 / mCanvas.width;
+            const threshold = 25 / mCanvas.width;
             for (let w of windows) {
                 for (let p of w.points) {
                     const dx = p.x - pos.x;
