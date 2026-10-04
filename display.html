@@ -134,17 +134,34 @@
         const roomPin = Math.floor(1000 + Math.random() * 9000).toString();
         const peerId = "hy320-room-" + roomPin;
 
+        // Natychmiastowe pokazanie PIN-u na ekranie
+        pinCodeEl.innerText = roomPin;
+
         // Link bezpośredni z PIN-em w parametrze URL (?pin=XXXX)
         const remoteUrl = window.location.origin + "/remote.html?pin=" + roomPin;
 
-        // Generowanie kodu QR
-        QRCode.toCanvas(qrCanvas, remoteUrl, {
-            width: 110,
-            margin: 0,
-            color: { dark: "#000000", light: "#ffffff" }
-        }, function (error) {
-            if (error) console.error("QR Error:", error);
-        });
+        function renderQR() {
+            if (typeof QRCode !== "undefined" && QRCode.toCanvas) {
+                QRCode.toCanvas(qrCanvas, remoteUrl, {
+                    width: 110,
+                    margin: 0,
+                    color: { dark: "#000000", light: "#ffffff" }
+                }, function (error) {
+                    if (error) console.error("QR Error:", error);
+                });
+            } else {
+                // Prosty fallback na szybki obrazek QR z darmowego generatora online
+                const img = new Image();
+                img.src = "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" + encodeURIComponent(remoteUrl);
+                img.onload = () => {
+                    const ctx = qrCanvas.getContext("2d");
+                    qrCanvas.width = 110;
+                    qrCanvas.height = 110;
+                    ctx.drawImage(img, 0, 0);
+                };
+            }
+        }
+        renderQR();
 
         let gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
         let currentProgram = null;
