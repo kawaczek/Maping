@@ -47,30 +47,47 @@
             z-index: 20;
             display: none;
         }
+        /* Banner z kodem PIN i kodem QR */
         #pinBanner {
             position: absolute;
             top: 25px; left: 25px;
-            background: rgba(15, 17, 26, 0.9);
+            background: rgba(15, 17, 26, 0.95);
             border: 2px solid #00d2ff;
-            box-shadow: 0 0 25px rgba(0, 210, 255, 0.4);
-            border-radius: 16px;
-            padding: 18px 24px;
+            box-shadow: 0 0 30px rgba(0, 210, 255, 0.5);
+            border-radius: 20px;
+            padding: 20px 24px;
             color: #ffffff;
             z-index: 40;
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 24px;
             transition: all 0.5s ease;
         }
-        #pinBanner h2 { font-size: 1rem; color: #8b9bb4; margin-bottom: 6px; }
+        #qrBox {
+            background: #ffffff;
+            padding: 8px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #qrCanvas {
+            display: block;
+        }
+        .banner-info h2 { font-size: 0.9rem; color: #8b9bb4; letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
         #pinCode {
-            font-size: 2.8rem; font-weight: 900; letter-spacing: 6px;
+            font-size: 3rem; font-weight: 900; letter-spacing: 6px;
             color: #00d2ff; font-family: monospace; line-height: 1;
         }
-        #pinBanner p { font-size: 0.85rem; color: #8b9bb4; margin-top: 6px; }
+        #pinSub { font-size: 0.85rem; color: #8b9bb4; margin-top: 6px; max-width: 200px; line-height: 1.3; }
         #pinBanner.connected {
             border-color: #00ff88;
-            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.5);
         }
     </style>
+    <!-- Biblioteka do generowania kodu QR offline bez zewnętrznych API -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
@@ -90,10 +107,16 @@
 
         <div id="blackout"></div>
 
+        <!-- Banner parowania: KOD PIN + KOD QR -->
         <div id="pinBanner">
-            <h2>PAIRING PIN CODE:</h2>
-            <div id="pinCode">----</div>
-            <p id="pinSub">Open <b>maping.pages.dev/remote.html</b> on phone & enter PIN</p>
+            <div id="qrBox">
+                <canvas id="qrCanvas"></canvas>
+            </div>
+            <div class="banner-info">
+                <h2>Scan to Control</h2>
+                <div id="pinCode">----</div>
+                <p id="pinSub">Scan QR or enter PIN on phone</p>
+            </div>
         </div>
     </div>
 
@@ -106,9 +129,22 @@
         const pinCodeEl = document.getElementById("pinCode");
         const pinBanner = document.getElementById("pinBanner");
         const pinSub = document.getElementById("pinSub");
+        const qrCanvas = document.getElementById("qrCanvas");
 
         const roomPin = Math.floor(1000 + Math.random() * 9000).toString();
         const peerId = "hy320-room-" + roomPin;
+
+        // Link bezpośredni z PIN-em w parametrze URL (?pin=XXXX)
+        const remoteUrl = window.location.origin + "/remote.html?pin=" + roomPin;
+
+        // Generowanie kodu QR
+        QRCode.toCanvas(qrCanvas, remoteUrl, {
+            width: 110,
+            margin: 0,
+            color: { dark: "#000000", light: "#ffffff" }
+        }, function (error) {
+            if (error) console.error("QR Error:", error);
+        });
 
         let gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
         let currentProgram = null;
@@ -172,6 +208,7 @@
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
             if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error("Shader error:", gl.getShaderInfoLog(shader));
                 gl.deleteShader(shader);
                 return null;
             }
@@ -253,11 +290,11 @@
         peer.on("connection", (conn) => {
             pinBanner.classList.add("connected");
             pinCodeEl.style.color = "#00ff88";
-            pinSub.innerHTML = "Connected to Phone! ✨ (Hiding in 5s...)";
+            pinSub.innerHTML = "Connected! ✨ (Hiding banner...)";
             setTimeout(() => {
                 pinBanner.style.opacity = "0";
                 pinBanner.style.pointerEvents = "none";
-            }, 5000);
+            }, 4000);
 
             conn.on("data", (data) => {
                 if (data.type === "shader") {

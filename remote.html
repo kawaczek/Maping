@@ -203,8 +203,17 @@
             });
         }
 
+        // Auto-connect when scanned via QR code (?pin=XXXX)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlPin = urlParams.get("pin");
         const savedPin = localStorage.getItem("last_maping_pin");
-        if (savedPin) {
+
+        if (urlPin) {
+            inputPin.value = urlPin;
+            setTimeout(() => {
+                connectWithPin();
+            }, 300);
+        } else if (savedPin) {
             inputPin.value = savedPin;
         }
 
