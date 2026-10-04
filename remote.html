@@ -71,7 +71,7 @@
             border: 2px solid transparent; text-align: center; cursor: pointer;
         }
         .shader-card.active { border-color: var(--accent); box-shadow: 0 0 12px rgba(255,75,114,0.4); }
-        .shader-card img { width: 100%; height: 70px; object-fit: cover; display: block; }
+        .shader-card img { width: 100%; height: 75px; object-fit: cover; display: block; }
         .shader-card span { display: block; padding: 6px 2px; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .slider-group { margin-bottom: 14px; }
@@ -92,7 +92,7 @@
         }
 
         #maskCanvas {
-            width: 100%; height: 200px; background: #000; border-radius: 12px;
+            width: 100%; height: 210px; background: #000; border-radius: 12px;
             border: 1px solid rgba(255,255,255,0.15); touch-action: none;
         }
     </style>
@@ -122,15 +122,29 @@
         </div>
     </div>
 
+    <!-- MASK EDITOR -->
     <div class="section">
-        <div class="section-title">✂️ MASK EDITOR (Drag window corners)</div>
+        <div class="section-title">✂️ WINDOW MASKING (Drag Corners to Fit Walls/Glass)</div>
         <canvas id="maskCanvas"></canvas>
         <div style="display:flex; justify-content:space-between; margin-top:8px;">
-            <button style="font-size:0.8rem; padding:8px 12px;" onclick="resetMasks()">Clear Masks</button>
-            <span style="font-size:0.8rem; color:var(--text-dim); line-height:30px;" id="winCount">Windows: 0</span>
+            <button style="font-size:0.8rem; padding:8px 12px;" onclick="resetMasks()">Clear All Masks (Full Room)</button>
+            <span style="font-size:0.8rem; color:var(--text-dim); line-height:30px;" id="winCount">Windows: 0 (Full Wall)</span>
         </div>
     </div>
 
+    <!-- GIFS & MEMES (Curated high-res loops) -->
+    <div class="section">
+        <div class="section-title">🐱 GIFS & MEMES PROJECTION</div>
+        <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:8px;">
+            <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('party')">🎉 Party & Dance</button>
+            <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('trippy')">🌀 Trippy & Neon</button>
+            <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('memes')">😂 Classic Memes</button>
+            <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('nature')">🔥 Fire & Space</button>
+        </div>
+        <div class="shaders-grid" id="gifGrid"></div>
+    </div>
+
+    <!-- CONTROLS -->
     <div class="section">
         <div class="section-title">🎛️ EFFECT CONTROLS</div>
         <div class="slider-group">
@@ -151,6 +165,7 @@
         </div>
     </div>
 
+    <!-- YOUTUBE -->
     <div class="section">
         <div class="section-title">▶️ CAST YOUTUBE VIDEO</div>
         <div class="yt-box">
@@ -159,25 +174,7 @@
         </div>
     </div>
 
-    <!-- GIFS & MEMES SEARCH -->
-    <div class="section">
-        <div class="section-title">🐱 GIFS & MEMES (GIPHY)</div>
-        <div class="yt-box" style="margin-bottom: 10px;">
-            <input type="text" id="gifQuery" placeholder="Search GIF or Meme (e.g. cat, party, fire)...">
-            <button onclick="searchGifs()">FIND</button>
-        </div>
-        <!-- Szybkie tagi -->
-        <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:8px;">
-            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('party')">🎉 Party</button>
-            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('fire')">🔥 Fire</button>
-            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('cat')">😺 Cat</button>
-            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('neon')">✨ Neon</button>
-            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('cyberpunk')">🏙️ Cyber</button>
-            <button style="padding:6px 10px; font-size:0.75rem;" onclick="quickGif('trippy')">🌀 Trippy</button>
-        </div>
-        <div class="shaders-grid" id="gifGrid" style="max-height: 220px; overflow-y: auto;"></div>
-    </div>
-
+    <!-- SHADERS -->
     <div class="section">
         <div class="section-title">🎨 SELECT PROJECTION SHADER</div>
         <div class="shaders-grid" id="shaderList"></div>
@@ -197,7 +194,7 @@
         function connectWithPin() {
             const pin = inputPin.value.trim();
             if (pin.length !== 4) {
-                alert("Please enter the 4-digit PIN code from your projector screen!");
+                alert("Please enter the 4-digit PIN code!");
                 return;
             }
             targetPeerId = "hy320-room-" + pin;
@@ -217,21 +214,18 @@
                 statusText.innerText = "Disconnected";
             });
 
-            conn.on("error", (err) => {
-                alert("Could not connect to PIN " + pin + ". Make sure the projector has the display page open!");
+            conn.on("error", () => {
+                alert("Could not connect to PIN " + pin + "!");
             });
         }
 
-        // Auto-connect when scanned via QR code (?pin=XXXX)
         const urlParams = new URLSearchParams(window.location.search);
         const urlPin = urlParams.get("pin");
         const savedPin = localStorage.getItem("last_maping_pin");
 
         if (urlPin) {
             inputPin.value = urlPin;
-            setTimeout(() => {
-                connectWithPin();
-            }, 300);
+            setTimeout(connectWithPin, 300);
         } else if (savedPin) {
             inputPin.value = savedPin;
         }
@@ -260,40 +254,59 @@
             if (id) send({ type: "youtube", id: id });
         }
 
-        // GIF / Meme Search via GIPHY Public Beta API
-        function quickGif(tag) {
-            document.getElementById("gifQuery").value = tag;
-            searchGifs();
-        }
+        // BAZA SPRAWDZONYCH GIFÓW I MEMÓW (Zawsze działają bez blokad API)
+        const gifDatabase = {
+            party: [
+                { name: "Neon Cat Dance", url: "https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif" },
+                { name: "Rainbow Dance", url: "https://media.giphy.com/media/l41lFw057lAJQMwg0/giphy.gif" },
+                { name: "Club Rave VJ", url: "https://media.giphy.com/media/3o7TKtnuHOHHUjR38Y/giphy.gif" },
+                { name: "Groovy Dog", url: "https://media.giphy.com/media/blSTtZehjAZ8I/giphy.gif" },
+                { name: "Laser Disco", url: "https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif" },
+                { name: "Dance Floor", url: "https://media.giphy.com/media/13HgwGsXF0aiGY/giphy.gif" }
+            ],
+            trippy: [
+                { name: "Hypnotic Tunnel", url: "https://media.giphy.com/media/3oKIPnAiaMCws8nOsE/giphy.gif" },
+                { name: "Liquid Psychedelic", url: "https://media.giphy.com/media/l0MYEqEzwMWFCg8rm/giphy.gif" },
+                { name: "Neon Cyber Warp", url: "https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif" },
+                { name: "Fractal Spiral", url: "https://media.giphy.com/media/xT9IgzoKnwFNmISR8I/giphy.gif" },
+                { name: "Kaleido Hypno", url: "https://media.giphy.com/media/d2jjuAZzDSVLZ5kI/giphy.gif" },
+                { name: "Glitch Spectrum", url: "https://media.giphy.com/media/xT1XGzAnABSXy8DPCU/giphy.gif" }
+            ],
+            memes: [
+                { name: "Nyan Cat Rainbow", url: "https://media.giphy.com/media/sIIhZliB2McAo/giphy.gif" },
+                { name: "Dancing Pepe", url: "https://media.giphy.com/media/krewXUB6LBja/giphy.gif" },
+                { name: "SpongeBob Rainbow", url: "https://media.giphy.com/media/BQUITFiYVtNte/giphy.gif" },
+                { name: "Pop Cat", url: "https://media.giphy.com/media/1BcfiGuO4Nxe1WHCX9/giphy.gif" },
+                { name: "Deal With It", url: "https://media.giphy.com/media/vNr3DRQOzzNm8/giphy.gif" },
+                { name: "Surprised Pikachu", url: "https://media.giphy.com/media/6nWhy3NdSTmBQEDGyY/giphy.gif" }
+            ],
+            nature: [
+                { name: "Burning Fire Loop", url: "https://media.giphy.com/media/P7JmDW7IkB7TW/giphy.gif" },
+                { name: "Northern Lights", url: "https://media.giphy.com/media/3o7qDPCdY5U98k4Q5q/giphy.gif" },
+                { name: "Snow Falling", url: "https://media.giphy.com/media/l2JI2q3z9bZ264jXa/giphy.gif" },
+                { name: "Galaxy Stars", url: "https://media.giphy.com/media/TZf4ZyXb0lXXi/giphy.gif" },
+                { name: "Lightning Storm", url: "https://media.giphy.com/media/d8dJ1G8Prp3vG/giphy.gif" },
+                { name: "Ocean Waves", url: "https://media.giphy.com/media/xT5LMA8nTOdlaUqYpO/giphy.gif" }
+            ]
+        };
 
-        async function searchGifs() {
-            const q = document.getElementById("gifQuery").value.trim() || "trippy";
+        function filterGifs(cat) {
+            const list = gifDatabase[cat] || gifDatabase.party;
             const grid = document.getElementById("gifGrid");
-            grid.innerHTML = "<span style=\"grid-column: span 3; color: var(--text-dim); font-size:0.8rem;\">Loading GIFs...</span>";
-            try {
-                // Publiczny klucz deweloperski GIPHY
-                const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=dc6zaTOxFJmzC&q=${encodeURIComponent(q)}&limit=9&rating=g`);
-                const json = await res.json();
-                grid.innerHTML = "";
-                json.data.forEach(item => {
-                    const thumb = item.images.fixed_width_small.url;
-                    const full = item.images.original.url;
-                    const card = document.createElement("div");
-                    card.className = "shader-card";
-                    card.innerHTML = `<img src="${thumb}" style="height:70px; object-fit:cover;"><span>${item.title ? item.title.slice(0,10) : "GIF"}</span>`;
-                    card.onclick = () => {
-                        document.querySelectorAll("#gifGrid .shader-card").forEach(c => c.classList.remove("active"));
-                        card.classList.add("active");
-                        send({ type: "gif", url: full });
-                    };
-                    grid.appendChild(card);
-                });
-            } catch (err) {
-                grid.innerHTML = "<span style=\"grid-column: span 3; color: var(--accent); font-size:0.8rem;\">Failed to load GIFs</span>";
-            }
+            grid.innerHTML = "";
+            list.forEach(g => {
+                const card = document.createElement("div");
+                card.className = "shader-card";
+                card.innerHTML = `<img src="${g.url}" loading="lazy"><span>${g.name}</span>`;
+                card.onclick = () => {
+                    document.querySelectorAll(".shader-card").forEach(c => c.classList.remove("active"));
+                    card.classList.add("active");
+                    send({ type: "gif", url: g.url });
+                };
+                grid.appendChild(card);
+            });
         }
-        // Wczytaj początkowe GIF-y na start
-        setTimeout(() => quickGif("party"), 500);
+        filterGifs("party");
 
         const shaders = [
             { file: "plasma_glow_frag.glsl", name: "Plasma Glow", img: "plasmaGlow.png" },
@@ -323,6 +336,7 @@
             listContainer.appendChild(card);
         });
 
+        // EDYTOR MASEK - MASKOWANIE OKIEN
         const mCanvas = document.getElementById("maskCanvas");
         const mCtx = mCanvas.getContext("2d");
         let windows = [];
@@ -337,8 +351,8 @@
         setTimeout(resizeMaskCanvas, 100);
 
         function addWindow() {
-            const w = 0.3, h = 0.4;
-            const x = 0.1 + (windows.length * 0.1) % 0.5;
+            const w = 0.35, h = 0.45;
+            const x = 0.1 + (windows.length * 0.12) % 0.5;
             const y = 0.2;
             windows.push({
                 points: [
@@ -355,17 +369,29 @@
 
         function resetMasks() {
             windows = [];
-            document.getElementById("winCount").innerText = "Windows: 0";
+            document.getElementById("winCount").innerText = "Windows: 0 (Full Wall)";
             drawMaskCanvas();
             send({ type: "masks", windows: windows });
         }
 
         function drawMaskCanvas() {
             mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
-            mCtx.fillStyle = "#181c2b";
+            
+            // Czarna ściana pokoju
+            mCtx.fillStyle = "#0c0e17";
             mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
 
-            windows.forEach((win) => {
+            if (windows.length === 0) {
+                mCtx.fillStyle = "rgba(0, 210, 255, 0.1)";
+                mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
+                mCtx.fillStyle = "#8b9bb4";
+                mCtx.font = "12px sans-serif";
+                mCtx.textAlign = "center";
+                mCtx.fillText("No windows defined (Light fills entire room)", mCanvas.width / 2, mCanvas.height / 2);
+                return;
+            }
+
+            windows.forEach((win, wIdx) => {
                 mCtx.beginPath();
                 win.points.forEach((p, pIdx) => {
                     const px = p.x * mCanvas.width;
@@ -374,17 +400,27 @@
                     else mCtx.lineTo(px, py);
                 });
                 mCtx.closePath();
-                mCtx.fillStyle = "rgba(0, 210, 255, 0.2)";
+                // Wnętrze okna jest rozświetlone błękitem (tu świeci projektor!)
+                mCtx.fillStyle = "rgba(0, 210, 255, 0.4)";
                 mCtx.fill();
                 mCtx.strokeStyle = "#00d2ff";
                 mCtx.lineWidth = 2;
                 mCtx.stroke();
 
+                // Numer okna w środku
+                const centerX = (win.points[0].x + win.points[1].x + win.points[2].x + win.points[3].x) / 4 * mCanvas.width;
+                const centerY = (win.points[0].y + win.points[1].y + win.points[2].y + win.points[3].y) / 4 * mCanvas.height;
+                mCtx.fillStyle = "#ffffff";
+                mCtx.font = "bold 13px sans-serif";
+                mCtx.textAlign = "center";
+                mCtx.fillText("Window #" + (wIdx + 1), centerX, centerY);
+
+                // Czerwone narożniki do przeciągania
                 win.points.forEach((p) => {
                     const px = p.x * mCanvas.width;
                     const py = p.y * mCanvas.height;
                     mCtx.beginPath();
-                    mCtx.arc(px, py, 8, 0, Math.PI * 2);
+                    mCtx.arc(px, py, 9, 0, Math.PI * 2);
                     mCtx.fillStyle = "#ff4b72";
                     mCtx.fill();
                     mCtx.strokeStyle = "#fff";
@@ -405,7 +441,7 @@
         }
 
         function findPoint(pos) {
-            const threshold = 25 / mCanvas.width;
+            const threshold = 30 / mCanvas.width;
             for (let w of windows) {
                 for (let p of w.points) {
                     const dx = p.x - pos.x;

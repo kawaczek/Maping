@@ -17,6 +17,7 @@
             position: absolute;
             top: 0; left: 0;
             width: 100vw; height: 100vh;
+            background: #000000;
         }
         canvas#webglCanvas {
             position: absolute;
@@ -40,10 +41,11 @@
             display: none;
             pointer-events: none;
         }
+        /* Maska SVG wycinająca światło */
         svg#maskOverlay {
             position: absolute;
             top: 0; left: 0;
-            width: 100vw; height: 100vh;
+            width: 100%; height: 100%;
             pointer-events: none;
             z-index: 10;
         }
@@ -55,7 +57,6 @@
             z-index: 20;
             display: none;
         }
-        /* Banner z kodem PIN i kodem QR */
         #pinBanner {
             position: absolute;
             top: 25px; left: 25px;
@@ -80,9 +81,7 @@
             align-items: center;
             justify-content: center;
         }
-        #qrCanvas {
-            display: block;
-        }
+        #qrCanvas { display: block; }
         .banner-info h2 { font-size: 0.9rem; color: #8b9bb4; letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
         #pinCode {
             font-size: 3rem; font-weight: 900; letter-spacing: 6px;
@@ -94,7 +93,6 @@
             box-shadow: 0 0 25px rgba(0, 255, 136, 0.5);
         }
     </style>
-    <!-- Biblioteka do generowania kodu QR offline bez zewnętrznych API -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
@@ -104,19 +102,22 @@
         <iframe id="ytPlayer" allow="autoplay"></iframe>
         <img id="gifPlayer" alt="GIF Loop" />
         
+        <!-- Prawdziwa maska: czarna płachta z przezroczystymi oknami (okna świecą!) -->
         <svg id="maskOverlay">
             <defs>
-                <mask id="windowMask">
-                    <rect width="100%" height="100%" fill="white" id="maskBase" />
-                    <g id="maskPolygons"></g>
+                <mask id="windowHoles">
+                    <!-- Białe tło = widoczna czarna zasłona -->
+                    <rect width="100%" height="100%" fill="white" />
+                    <!-- Czarne wielokąty = dziury/okna gdzie widać światło! -->
+                    <g id="maskHoles"></g>
                 </mask>
             </defs>
-            <rect width="100%" height="100%" fill="black" mask="url(#windowMask)" id="maskShade" style="display:none;" />
+            <!-- Czarna zasłona z wyciętymi oknami -->
+            <rect width="100%" height="100%" fill="black" mask="url(#windowHoles)" id="maskCurtain" style="display:none;" />
         </svg>
 
         <div id="blackout"></div>
 
-        <!-- Banner parowania: KOD PIN + KOD QR -->
         <div id="pinBanner">
             <div id="qrBox">
                 <canvas id="qrCanvas"></canvas>
@@ -132,9 +133,10 @@
     <script>
         const canvas = document.getElementById("webglCanvas");
         const blackout = document.getElementById("blackout");
-        const maskPolygons = document.getElementById("maskPolygons");
-        const maskShade = document.getElementById("maskShade");
+        const maskHoles = document.getElementById("maskHoles");
+        const maskCurtain = document.getElementById("maskCurtain");
         const ytPlayer = document.getElementById("ytPlayer");
+        const gifPlayer = document.getElementById("gifPlayer");
         const pinCodeEl = document.getElementById("pinCode");
         const pinBanner = document.getElementById("pinBanner");
         const pinSub = document.getElementById("pinSub");
@@ -145,10 +147,8 @@
         const roomPin = demoPin || Math.floor(1000 + Math.random() * 9000).toString();
         const peerId = "hy320-room-" + roomPin;
 
-        // Natychmiastowe pokazanie PIN-u na ekranie
         pinCodeEl.innerText = roomPin;
 
-        // Link bezpośredni z PIN-em w parametrze URL (?pin=XXXX)
         const remoteUrl = window.location.origin + "/remote.html?pin=" + roomPin;
 
         function renderQR() {
@@ -161,7 +161,6 @@
                     if (error) console.error("QR Error:", error);
                 });
             } else {
-                // Prosty fallback na szybki obrazek QR z darmowego generatora online
                 const img = new Image();
                 img.src = "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" + encodeURIComponent(remoteUrl);
                 img.onload = () => {
@@ -294,19 +293,21 @@
         }
         render();
 
+        // Nakładanie wyciętych okien
         function applyMasks(windows) {
             if (!windows || windows.length === 0) {
-                maskShade.style.display = "none";
-                maskPolygons.innerHTML = "";
+                maskCurtain.style.display = "none";
+                maskHoles.innerHTML = "";
                 return;
             }
-            maskShade.style.display = "block";
-            let svgHtml = "";
+            maskCurtain.style.display = "block";
+            let holesSvg = "";
             windows.forEach(w => {
                 const pts = w.points.map(p => `${p.x * window.innerWidth},${p.y * window.innerHeight}`).join(" ");
-                svgHtml += `<polygon points="${pts}" fill="black" />`;
+                // Czarny wielokąt w masce wycina dziurę w czarnej zasłonie -> światło świeci w oknie!
+                holesSvg += `<polygon points="${pts}" fill="black" />`;
             });
-            maskPolygons.innerHTML = svgHtml;
+            maskHoles.innerHTML = holesSvg;
         }
 
         const peer = new Peer(peerId);
@@ -322,11 +323,12 @@
             setTimeout(() => {
                 pinBanner.style.opacity = "0";
                 pinBanner.style.pointerEvents = "none";
-            }, 4000);
+            }, 3000);
 
             conn.on("data", (data) => {
                 if (data.type === "shader") {
                     ytPlayer.style.display = "none";
+                    gifPlayer.style.display = "none";
                     canvas.style.display = "block";
                     fetch("extracted_assets/shaders/" + data.file)
                         .then(r => r.text())
