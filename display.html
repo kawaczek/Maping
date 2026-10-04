@@ -140,7 +140,9 @@
         const pinSub = document.getElementById("pinSub");
         const qrCanvas = document.getElementById("qrCanvas");
 
-        const roomPin = Math.floor(1000 + Math.random() * 9000).toString();
+        const urlParams = new URLSearchParams(window.location.search);
+        const demoPin = urlParams.get("demo");
+        const roomPin = demoPin || Math.floor(1000 + Math.random() * 9000).toString();
         const peerId = "hy320-room-" + roomPin;
 
         // Natychmiastowe pokazanie PIN-u na ekranie
