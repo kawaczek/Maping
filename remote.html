@@ -210,12 +210,22 @@
 
         let activeWindowIndex = -1; // -1 = All / Global, 0 = Window 1, 1 = Window 2...
 
-        const peer = new Peer();
+        let peerReady = false;
+        peer.on("open", () => {
+            peerReady = true;
+            if (urlPin) {
+                inputPin.value = urlPin;
+                connectWithPin();
+            } else if (savedPin) {
+                inputPin.value = savedPin;
+            }
+        });
 
         function connectWithPin() {
             const pin = inputPin.value.trim();
-            if (pin.length !== 4) {
-                alert("Please enter the 4-digit PIN code!");
+            if (pin.length !== 4) return;
+            if (!peerReady) {
+                setTimeout(connectWithPin, 200);
                 return;
             }
             targetPeerId = "hy320-room-" + pin;
@@ -236,18 +246,14 @@
             });
 
             conn.on("error", () => {
-                alert("Could not connect to PIN " + pin + "!");
+                statusText.innerText = "Retrying...";
+                setTimeout(connectWithPin, 1000);
             });
         }
 
         const urlParams = new URLSearchParams(window.location.search);
         const urlPin = urlParams.get("pin");
         const savedPin = localStorage.getItem("last_maping_pin");
-
-        if (urlPin) {
-            inputPin.value = urlPin;
-            setTimeout(connectWithPin, 300);
-        } else if (savedPin) {
             inputPin.value = savedPin;
         }
 
