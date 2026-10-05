@@ -636,25 +636,21 @@
         }
 
         const shaders = [
-            { file: "plasma_glow_frag.glsl", name: "Plasma Glow", img: "plasmaGlow.png" },
-            { file: "flow_gradient_frag.glsl", name: "Flow Gradient", img: "flowGradient.png" },
-            { file: "kaleido2_frag.glsl", name: "Kaleidoscope", img: "kaleido2.png" },
-            { file: "rainbow_frag.glsl", name: "Rainbow", img: "rainbow.png" },
-            { file: "simplex_frag.glsl", name: "Simplex Noise", img: "simplex.png" },
-            { file: "color_explosion_frag.glsl", name: "Explosion", img: "colorExplosion.png" },
-            { file: "amoeba_smooth_frag.glsl", name: "Amoeba", img: "amoebaSmooth.png" },
-            { file: "blob_jello_frag.glsl", name: "Blob Jelly", img: "blobJelly.png" },
-            { file: "disco_texture_frag.glsl", name: "Disco", img: "discoTexture.png" },
-            { file: "oil_swirl_frag.glsl", name: "Oil Swirl", img: "oilSwirl.png" },
-            { file: "turbo_lence_frag.glsl", name: "Turbulence", img: "turboLence.png" },
-            { file: "warp_plasma_frag.glsl", name: "Warp Plasma", img: "warpPlasma.png" }
+            { file: "cyber_aurora.glsl", name: "🌌 Cyber Aurora", bg: "linear-gradient(135deg, #0b1a30, #00d2ff, #7928ca)" },
+            { file: "hyperspace_warp.glsl", name: "✨ Hyperspace", bg: "radial-gradient(circle, #00ff88, #002244, #000)" },
+            { file: "neon_lava.glsl", name: "🔥 Neon Lava", bg: "linear-gradient(135deg, #ff007f, #ffaa00, #33001b)" },
+            { file: "synthwave_grid.glsl", name: "📐 Synthwave", bg: "linear-gradient(180deg, #12002b 0%, #ff007f 60%, #00ffff 100%)" },
+            { file: "techno_pulse.glsl", name: "🪩 Techno Pulse", bg: "radial-gradient(circle, #ff0055, #110033, #050510)" },
+            { file: "ocean_caustics.glsl", name: "🌊 Ocean Water", bg: "linear-gradient(135deg, #0052d4, #4364f7, #6fb1fc)" },
+            { file: "electric_arc.glsl", name: "⚡ Electric Arc", bg: "linear-gradient(135deg, #051429, #00d2ff, #ffffff)" },
+            { file: "zen_blossom.glsl", name: "🌸 Zen Blossom", bg: "radial-gradient(circle, #ff758c, #ff7eb3, #1e0826)" }
         ];
 
         const listContainer = document.getElementById("shaderList");
         shaders.forEach((s, idx) => {
             const card = document.createElement("div");
             card.className = "shader-card" + (idx === 0 ? " active" : "");
-            card.innerHTML = `<img src="extracted_assets/shader_images/${s.img}" onerror="this.src='extracted_assets/shader_images/solidColor.png'"><span>${s.name}</span>`;
+            card.innerHTML = `<div style="width:100%; height:75px; background:${s.bg}; display:flex; align-items:center; justify-content:center; font-size:1.6rem; text-shadow:0 0 10px rgba(0,0,0,0.8);">${s.name.split(' ')[0]}</div><span>${s.name.split(' ').slice(1).join(' ')}</span>`;
             card.onclick = () => {
                 document.querySelectorAll(".shader-card").forEach(c => c.classList.remove("active"));
                 card.classList.add("active");

@@ -405,7 +405,12 @@
         const shaderSourceCache = {};
         async function getShaderSource(file) {
             if (shaderSourceCache[file]) return shaderSourceCache[file];
-            const r = await fetch("extracted_assets/shaders/" + file);
+            const path = file.startsWith("shaders/") ? file : ("shaders/" + file);
+            let r = await fetch(path);
+            if (!r.ok) {
+                // Fallback do starych plików jeśli podano starą nazwę
+                r = await fetch("extracted_assets/shaders/" + file);
+            }
             const code = await r.text();
             shaderSourceCache[file] = code;
             return code;
@@ -566,7 +571,7 @@
             isBlackout: false,
             grid: false,
             currentType: "shader",
-            currentFile: "plasma_glow_frag.glsl"
+            currentFile: "cyber_aurora.glsl"
         };
 
         const peer = new Peer(peerId, peerConfig);
@@ -589,7 +594,7 @@
                 });
             });
 
-            conn.on("data", (data) => {
+            conn.on("data", async (data) => {
                 if (data.type === "grid") {
                     gridActive = !!data.enabled;
                     activeState.grid = gridActive;
@@ -601,9 +606,8 @@
                     ytPlayer.style.display = "none";
                     globalGif.style.display = "none";
                     canvas.style.display = "block";
-                    fetch("extracted_assets/shaders/" + data.file)
-                        .then(r => r.text())
-                        .then(code => loadProgram(code));
+                    const code = await getShaderSource(data.file);
+                    loadProgram(code);
                 } else if (data.type === "uniforms") {
                     uniforms = { ...uniforms, ...data.values };
                     activeState.uniforms = uniforms;
