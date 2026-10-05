@@ -316,13 +316,42 @@
 
                 // Jeśli okno ma przypisany własny dedykowany GIF/wideo:
                 if (w.mediaUrl) {
-                    const polyPts = w.points.map(p => `${p.x * 100}% ${p.y * 100}%`).join(", ");
+                    // Wylicz bounding box okna w pikselach
+                    const xs = w.points.map(p => p.x * window.innerWidth);
+                    const ys = w.points.map(p => p.y * window.innerHeight);
+                    const minX = Math.min(...xs);
+                    const maxX = Math.max(...xs);
+                    const minY = Math.min(...ys);
+                    const maxY = Math.max(...ys);
+                    const boxW = Math.max(10, maxX - minX);
+                    const boxH = Math.max(10, maxY - minY);
+
+                    // Ścieżka klipowania relatywna do bounding boxa
+                    const relPts = w.points.map(p => {
+                        const rx = ((p.x * window.innerWidth - minX) / boxW) * 100;
+                        const ry = ((p.y * window.innerHeight - minY) / boxH) * 100;
+                        return `${rx.toFixed(1)}% ${ry.toFixed(1)}%`;
+                    }).join(", ");
+
                     const scale = w.scale || 1.0;
+                    const posX = w.posX || 0;
+                    const posY = w.posY || 0;
                     const fit = w.fit || "contain";
+
                     const surfaceDiv = document.createElement("div");
                     surfaceDiv.className = "window-surface";
-                    surfaceDiv.style.clipPath = `polygon(${polyPts})`;
-                    surfaceDiv.innerHTML = `<img src="${w.mediaUrl}" style="width:100%; height:100%; object-fit:${fit}; transform:scale(${scale}); transform-origin:center;" />`;
+                    surfaceDiv.style.position = "absolute";
+                    surfaceDiv.style.left = minX + "px";
+                    surfaceDiv.style.top = minY + "px";
+                    surfaceDiv.style.width = boxW + "px";
+                    surfaceDiv.style.height = boxH + "px";
+                    surfaceDiv.style.clipPath = `polygon(${relPts})`;
+                    surfaceDiv.style.overflow = "hidden";
+                    surfaceDiv.style.display = "flex";
+                    surfaceDiv.style.alignItems = "center";
+                    surfaceDiv.style.justifyContent = "center";
+
+                    surfaceDiv.innerHTML = `<img src="${w.mediaUrl}" style="width:100%; height:100%; object-fit:${fit}; transform: translate(${posX}%, ${posY}%) scale(${scale}); transform-origin:center;" />`;
                     windowsLayer.appendChild(surfaceDiv);
                 }
             });

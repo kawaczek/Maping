@@ -155,13 +155,29 @@
     <div class="section">
         <div class="section-title" id="gifSectionTitle">🐱 ASSIGN GIF TO: 🌍 ALL / FULL ROOM</div>
         
-        <!-- Suwak dopasowania rozmiaru GIF-a w oknie -->
-        <div style="background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.07);">
-            <div class="slider-label"><span>🔍 Window GIF Size / Zoom</span><span id="val_gif_scale">100%</span></div>
-            <input type="range" min="0.2" max="2.5" step="0.05" value="1.0" oninput="updateGifScale(this.value)">
-            <div style="display:flex; justify-content:space-between; margin-top:6px;">
-                <button style="padding:4px 8px; font-size:0.75rem;" onclick="setGifFit('contain')">Fit Inside (Contain)</button>
-                <button style="padding:4px 8px; font-size:0.75rem;" onclick="setGifFit('cover')">Fill Window (Cover)</button>
+        <!-- Panel precyzyjnego dopasowania GIF-a w oknie -->
+        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid rgba(0,210,255,0.2);">
+            <div style="font-weight:bold; font-size:0.85rem; color:var(--cyan); margin-bottom:8px;">🎯 Precision Window Alignment</div>
+            
+            <div class="slider-group" style="margin-bottom:8px;">
+                <div class="slider-label"><span>🔍 Zoom / Scale</span><span id="val_gif_scale">100%</span></div>
+                <input type="range" id="slider_gif_scale" min="0.1" max="3.0" step="0.05" value="1.0" oninput="updateGifScale(this.value)">
+            </div>
+
+            <div class="slider-group" style="margin-bottom:8px;">
+                <div class="slider-label"><span>↔️ Position X (Horizontal)</span><span id="val_gif_x">0%</span></div>
+                <input type="range" id="slider_gif_x" min="-100" max="100" step="2" value="0" oninput="updateGifPos('X', this.value)">
+            </div>
+
+            <div class="slider-group" style="margin-bottom:10px;">
+                <div class="slider-label"><span>↕️ Position Y (Vertical)</span><span id="val_gif_y">0%</span></div>
+                <input type="range" id="slider_gif_y" min="-100" max="100" step="2" value="0" oninput="updateGifPos('Y', this.value)">
+            </div>
+
+            <div style="display:flex; justify-content:space-between; gap:6px;">
+                <button style="flex:1; padding:6px 8px; font-size:0.75rem;" onclick="setGifFit('contain')">Fit (Contain)</button>
+                <button style="flex:1; padding:6px 8px; font-size:0.75rem;" onclick="setGifFit('cover')">Fill (Cover)</button>
+                <button style="flex:1; padding:6px 8px; font-size:0.75rem; background:#221419; color:var(--accent);" onclick="resetGifTransform()">Reset Center</button>
             </div>
         </div>
 
@@ -388,10 +404,19 @@
             document.getElementById("val_gif_scale").innerText = Math.round(val * 100) + "%";
             const scale = parseFloat(val);
             if (activeWindowIndex === -1) {
-                // Skalowanie globalnego GIF-a
                 send({ type: "gif_scale", scale: scale });
             } else if (windows[activeWindowIndex]) {
                 windows[activeWindowIndex].scale = scale;
+                send({ type: "masks", windows: windows });
+            }
+        }
+
+        function updateGifPos(axis, val) {
+            document.getElementById("val_gif_" + axis.toLowerCase()).innerText = val + "%";
+            const num = parseFloat(val);
+            if (windows[activeWindowIndex]) {
+                if (axis === "X") windows[activeWindowIndex].posX = num;
+                if (axis === "Y") windows[activeWindowIndex].posY = num;
                 send({ type: "masks", windows: windows });
             }
         }
@@ -401,6 +426,21 @@
                 send({ type: "gif_fit", fit: mode });
             } else if (windows[activeWindowIndex]) {
                 windows[activeWindowIndex].fit = mode;
+                send({ type: "masks", windows: windows });
+            }
+        }
+
+        function resetGifTransform() {
+            document.getElementById("slider_gif_scale").value = 1.0;
+            document.getElementById("slider_gif_x").value = 0;
+            document.getElementById("slider_gif_y").value = 0;
+            document.getElementById("val_gif_scale").innerText = "100%";
+            document.getElementById("val_gif_x").innerText = "0%";
+            document.getElementById("val_gif_y").innerText = "0%";
+            if (windows[activeWindowIndex]) {
+                windows[activeWindowIndex].scale = 1.0;
+                windows[activeWindowIndex].posX = 0;
+                windows[activeWindowIndex].posY = 0;
                 send({ type: "masks", windows: windows });
             }
         }
