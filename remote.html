@@ -235,10 +235,11 @@
                 iceCandidatePoolSize: 10
             }
         };
-
-        const peer = new Peer(peerConfig);
+        let peerReady = false;
+        const peer = new Peer(undefined, peerConfig);
         peer.on("open", () => {
             peerReady = true;
+            statusText.innerText = "Ready to connect";
             if (urlPin) {
                 inputPin.value = urlPin;
                 connectWithPin();
@@ -247,21 +248,36 @@
             }
         });
 
+        peer.on("error", (err) => {
+            console.error("PeerJS error:", err);
+            statusText.innerText = "Error: " + err.type;
+        });
+
         function connectWithPin() {
             const pin = inputPin.value.trim();
-            if (pin.length !== 4) return;
+            if (pin.length !== 4) {
+                alert("Please enter a 4-digit PIN!");
+                return;
+            }
             if (!peerReady) {
-                setTimeout(connectWithPin, 200);
+                statusText.innerText = "Waiting for network...";
+                setTimeout(connectWithPin, 300);
                 return;
             }
             targetPeerId = "hy320-room-" + pin;
             statusText.innerText = "Connecting to #" + pin + "...";
+            document.querySelector(".btn-connect").innerText = "CONNECTING...";
 
-            conn = peer.connect(targetPeerId);
+            if (conn) {
+                try { conn.close(); } catch(e){}
+            }
+
+            conn = peer.connect(targetPeerId, { reliable: true });
 
             conn.on("open", () => {
                 dot.className = "status-dot online";
                 statusText.innerText = "Connected (#" + pin + ")";
+                document.querySelector(".btn-connect").innerText = "CONNECTED!";
                 pinModal.style.display = "none";
                 localStorage.setItem("last_maping_pin", pin);
             });
@@ -269,19 +285,20 @@
             conn.on("close", () => {
                 dot.className = "status-dot";
                 statusText.innerText = "Disconnected";
+                document.querySelector(".btn-connect").innerText = "CONNECT 🚀";
             });
 
-            conn.on("error", () => {
-                statusText.innerText = "Retrying...";
-                setTimeout(connectWithPin, 1000);
+            conn.on("error", (err) => {
+                console.error("Conn error:", err);
+                statusText.innerText = "Failed to connect";
+                document.querySelector(".btn-connect").innerText = "CONNECT 🚀";
+                alert("Connection failed! Make sure the projector has display.html open with PIN #" + pin);
             });
         }
 
         const urlParams = new URLSearchParams(window.location.search);
         const urlPin = urlParams.get("pin");
         const savedPin = localStorage.getItem("last_maping_pin");
-            inputPin.value = savedPin;
-        }
 
         function send(data) {
             if (conn && conn.open) conn.send(data);
