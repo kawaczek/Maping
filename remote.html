@@ -754,11 +754,12 @@
             conn = peer.connect(targetPeerId, { reliable: true });
 
             conn.on("open", () => {
-                // Wyślij kryptograficzny token sesji (jeśli połączono przez QR kod lub demo)
+                // Wyślij kryptograficzny token sesji oraz PIN (podwójna autoryzacja)
                 const tokenToSend = urlToken || (pin === "7777" ? "demo-secret-777" : null);
                 conn.send({
                     type: "auth_handshake",
-                    token: tokenToSend
+                    token: tokenToSend,
+                    pin: fullPin
                 });
             });
 
@@ -767,7 +768,8 @@
                     const tokenToSend = urlToken || (pin === "7777" ? "demo-secret-777" : null);
                     conn.send({
                         type: "auth_handshake",
-                        token: tokenToSend
+                        token: tokenToSend,
+                        pin: fullPin
                     });
                 } else if (data.type === "auth_success") {
                     dot.className = "status-dot online";

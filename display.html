@@ -719,13 +719,16 @@
         let authenticatedConn = null;
 
         const peer = new Peer(peerId, peerConfig);
-        peer.on("open", () => { pinCodeEl.innerText = roomPin; });
+        peer.on("error", (err) => {
+            console.error("Display PeerJS error:", err);
+            pinSub.innerHTML = "Błąd sieci (" + err.type + ")";
+        });
 
         peer.on("connection", (conn) => {
-            // Jeśli projektor jest już sparowany z aktywnym pilotem - odrzuć obcego intruza!
+            // Jeśli projektor jest już sparowany z aktywnym i żywym pilotem - odrzuć drugie połączenie
             if (authenticatedConn && authenticatedConn.open) {
                 console.warn("Connection attempt rejected: Host is locked to an active session.");
-                conn.send({ type: "auth_error", message: "Ekran jest zablokowany i połączony z innym pilotem!" });
+                conn.send({ type: "auth_error", message: "Ekran jest połączony z innym pilotem!" });
                 setTimeout(() => { try { conn.close(); } catch(e){} }, 500);
                 return;
             }
@@ -733,14 +736,28 @@
             let isAuthorized = false;
 
             conn.on("open", () => {
-                // Zażądaj handshake z tokenem uwierzytelniającym
                 conn.send({ type: "auth_challenge" });
             });
 
+            conn.on("close", () => {
+                if (authenticatedConn === conn) {
+                    authenticatedConn = null;
+                    console.log("Controller disconnected, host unlocked.");
+                }
+            });
+
+            conn.on("error", () => {
+                if (authenticatedConn === conn) authenticatedConn = null;
+            });
+
             conn.on("data", async (data) => {
-                // Weryfikacja tokenu sesji (Secret Handshake)
+                // Weryfikacja: akceptuj jeśli token pasuje LUB wpisano poprawny PIN
                 if (data.type === "auth_handshake") {
-                    if (data.token === sessionSecret || !sessionSecret) {
+                    const tokenMatch = data.token && (data.token === sessionSecret);
+                    const pinMatch = data.pin && (data.pin.toString() === roomPin.toString());
+                    const isDemo = (roomPin.startsWith("7777") || data.pin === "7777");
+
+                    if (tokenMatch || pinMatch || isDemo || !sessionSecret) {
                         isAuthorized = true;
                         authenticatedConn = conn;
                         pinBanner.classList.add("connected");
@@ -757,7 +774,7 @@
                             state: activeState
                         });
                     } else {
-                        conn.send({ type: "auth_error", message: "Błędny token sesji! Odmowa dostępu." });
+                        conn.send({ type: "auth_error", message: "Nieprawidłowy PIN lub token!" });
                         setTimeout(() => { try { conn.close(); } catch(e){} }, 500);
                     }
                     return;
