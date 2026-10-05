@@ -211,6 +211,13 @@
             </div>
         </div>
 
+        <!-- Bezpośrednia wyszukiwarka / wklejanie dowolnego GIFa z sieci -->
+        <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <input type="text" id="customGifInput" placeholder="Paste direct GIF/image URL..." style="flex:1; background:var(--card); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:10px 12px; color:#fff; font-size:0.85rem; outline:none;" onkeydown="if(event.key==='Enter') applyCustomGif()">
+            <button style="padding:10px 16px; font-size:0.85rem; background:rgba(0,210,255,0.2); border-color:#00d2ff; color:#00d2ff;" onclick="applyCustomGif()">PLAY GIF 🚀</button>
+        </div>
+
+        <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:6px;">Or choose from curated popular loops:</div>
         <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:8px;">
             <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('party')">🎉 Party & Dance</button>
             <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('trippy')">🌀 Trippy & Neon</button>
@@ -444,6 +451,22 @@
             ]
         };
 
+        function applyCustomGif() {
+            const input = document.getElementById("customGifInput");
+            const url = input.value.trim();
+            if (!url) return;
+
+            if (activeWindowIndex === -1) {
+                send({ type: "gif", url: url });
+            } else if (windows[activeWindowIndex]) {
+                windows[activeWindowIndex].mediaUrl = url;
+                windows[activeWindowIndex].shaderFile = null;
+                updateWindowTabs();
+                drawMaskCanvas();
+                send({ type: "masks", windows: windows });
+            }
+        }
+
         function filterGifs(cat) {
             const list = gifDatabase[cat] || gifDatabase.party;
             const grid = document.getElementById("gifGrid");
@@ -471,6 +494,8 @@
                 grid.appendChild(card);
             });
         }
+        filterGifs("party");
+
         function updateGifScale(val) {
             document.getElementById("val_gif_scale").innerText = Math.round(val * 100) + "%";
             const scale = parseFloat(val);
