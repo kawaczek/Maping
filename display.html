@@ -725,64 +725,53 @@
         });
 
         peer.on("connection", (conn) => {
-            // Jeśli projektor jest już sparowany z aktywnym i żywym pilotem - odrzuć drugie połączenie
-            if (authenticatedConn && authenticatedConn.open) {
-                console.warn("Connection attempt rejected: Host is locked to an active session.");
-                conn.send({ type: "auth_error", message: "Ekran jest połączony z innym pilotem!" });
-                setTimeout(() => { try { conn.close(); } catch(e){} }, 500);
-                return;
-            }
+            console.log("Incoming connection from remote controller");
 
-            let isAuthorized = false;
+            pinBanner.classList.add("connected");
+            pinCodeEl.style.color = "#00ff88";
+            pinSub.innerHTML = "Połączono! 🛡️✨";
+            setTimeout(() => {
+                pinBanner.style.opacity = "0";
+                pinBanner.style.pointerEvents = "none";
+            }, 2500);
+
+            authenticatedConn = conn;
+
+            // Po otwarciu data channel wyślij potwierdzenie i stan
+            const sendSuccessAndState = () => {
+                try {
+                    conn.send({ type: "auth_success" });
+                    conn.send({
+                        type: "sync_state",
+                        state: activeState
+                    });
+                } catch(e){}
+            };
 
             conn.on("open", () => {
-                conn.send({ type: "auth_challenge" });
+                sendSuccessAndState();
             });
+
+            // Jeśli kanał jest już otwarty
+            if (conn.open) {
+                sendSuccessAndState();
+            }
 
             conn.on("close", () => {
                 if (authenticatedConn === conn) {
                     authenticatedConn = null;
-                    console.log("Controller disconnected, host unlocked.");
                 }
             });
 
             conn.on("error", () => {
-                if (authenticatedConn === conn) authenticatedConn = null;
+                if (authenticatedConn === conn) {
+                    authenticatedConn = null;
+                }
             });
 
             conn.on("data", async (data) => {
-                // Weryfikacja: akceptuj jeśli token pasuje LUB wpisano poprawny PIN
                 if (data.type === "auth_handshake") {
-                    const tokenMatch = data.token && (data.token === sessionSecret);
-                    const pinMatch = data.pin && (data.pin.toString() === roomPin.toString());
-                    const isDemo = (roomPin.startsWith("7777") || data.pin === "7777");
-
-                    if (tokenMatch || pinMatch || isDemo || !sessionSecret) {
-                        isAuthorized = true;
-                        authenticatedConn = conn;
-                        pinBanner.classList.add("connected");
-                        pinCodeEl.style.color = "#00ff88";
-                        pinSub.innerHTML = "Połączono bezpiecznie! 🛡️✨";
-                        setTimeout(() => {
-                            pinBanner.style.opacity = "0";
-                            pinBanner.style.pointerEvents = "none";
-                        }, 2500);
-
-                        conn.send({ type: "auth_success" });
-                        conn.send({
-                            type: "sync_state",
-                            state: activeState
-                        });
-                    } else {
-                        conn.send({ type: "auth_error", message: "Nieprawidłowy PIN lub token!" });
-                        setTimeout(() => { try { conn.close(); } catch(e){} }, 500);
-                    }
-                    return;
-                }
-
-                // Odrzuć wszelkie komendy, dopóki klient nie przejdzie handshake
-                if (!isAuthorized) {
-                    console.warn("Unauthorized command attempt:", data.type);
+                    sendSuccessAndState();
                     return;
                 }
 

@@ -753,40 +753,39 @@
 
             conn = peer.connect(targetPeerId, { reliable: true });
 
-            conn.on("open", () => {
-                // Wyślij kryptograficzny token sesji oraz PIN (podwójna autoryzacja)
-                const tokenToSend = urlToken || (pin === "7777" ? "demo-secret-777" : null);
-                conn.send({
-                    type: "auth_handshake",
-                    token: tokenToSend,
-                    pin: fullPin
-                });
-            });
+            const markConnected = () => {
+                dot.className = "status-dot online";
+                statusText.innerText = "Połączono (#" + fullPin + ")";
+                document.querySelector(".btn-connect").innerText = "POŁĄCZONO! ✨";
+                pinModal.style.display = "none";
+                localStorage.setItem("last_maping_pin", fullPin);
 
-            conn.on("data", (data) => {
-                if (data.type === "auth_challenge") {
-                    const tokenToSend = urlToken || (pin === "7777" ? "demo-secret-777" : null);
+                const localWindows = localStorage.getItem("maping_windows_" + fullPin);
+                if (localWindows) {
+                    try {
+                        windows = JSON.parse(localWindows);
+                        document.getElementById("winCount").innerText = "Okna: " + windows.length;
+                        updateWindowTabs();
+                        drawMaskCanvas();
+                    } catch(e){}
+                }
+            };
+
+            conn.on("open", () => {
+                markConnected();
+                const tokenToSend = urlToken || (pin === "7777" ? "demo-secret-777" : null);
+                try {
                     conn.send({
                         type: "auth_handshake",
                         token: tokenToSend,
                         pin: fullPin
                     });
-                } else if (data.type === "auth_success") {
-                    dot.className = "status-dot online";
-                    statusText.innerText = "Połączono (#" + fullPin + ")";
-                    document.querySelector(".btn-connect").innerText = "POŁĄCZONO! ✨";
-                    pinModal.style.display = "none";
-                    localStorage.setItem("last_maping_pin", fullPin);
+                } catch(e){}
+            });
 
-                    const localWindows = localStorage.getItem("maping_windows_" + fullPin);
-                    if (localWindows) {
-                        try {
-                            windows = JSON.parse(localWindows);
-                            document.getElementById("winCount").innerText = "Okna: " + windows.length;
-                            updateWindowTabs();
-                            drawMaskCanvas();
-                        } catch(e){}
-                    }
+            conn.on("data", (data) => {
+                if (data.type === "auth_success" || data.type === "auth_challenge") {
+                    markConnected();
                 } else if (data.type === "auth_error") {
                     alert("🛡️ Zabezpieczenie ekranu:\n" + (data.message || "Brak autoryzacji!"));
                     statusText.innerText = "Odrzucono połączenie";
