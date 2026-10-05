@@ -3,316 +3,685 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Remote - Projector Controller</title>
+    <title>Maping - Smart Projector Remote</title>
     <style>
         :root {
-            --bg: #10131d;
-            --card: #181c2b;
-            --accent: #ff4b72;
-            --cyan: #00d2ff;
-            --text: #ffffff;
-            --text-dim: #8b9bb4;
+            --bg-gradient: linear-gradient(145deg, #0e121d 0%, #151a28 50%, #0d101a 100%);
+            --card-bg: rgba(26, 32, 48, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --card-hover: rgba(35, 43, 64, 0.9);
+            --accent-cyan: #00e5ff;
+            --accent-green: #10b981;
+            --accent-coral: #ff477e;
+            --accent-gold: #fbbf24;
+            --accent-purple: #8b5cf6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dim: #64748b;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: var(--text); padding-bottom: 60px; }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 90px;
+            overflow-x: hidden;
+        }
+
+        /* Top Navigation Bar */
         header {
-            position: sticky; top: 0; background: rgba(16,19,29,0.95);
-            backdrop-filter: blur(10px); padding: 12px 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-            display: flex; justify-content: space-between; align-items: center; z-index: 100;
+            position: sticky;
+            top: 0;
+            background: rgba(14, 18, 29, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
         }
-        h1 { font-size: 1.1rem; font-weight: 700; color: var(--cyan); }
+
+        .brand-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff 30%, var(--accent-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .status-pill:active { transform: scale(0.96); }
+
         .status-dot {
-            display: inline-block; width: 10px; height: 10px; border-radius: 50%;
-            background: #ff4444; margin-right: 6px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
         }
-        .status-dot.online { background: #00ff88; box-shadow: 0 0 10px #00ff88; }
-        
+        .status-dot.online {
+            background: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+        }
+
+        /* PIN Modal */
         #pinModal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(10,12,18,0.95); z-index: 999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 24px; text-align: center;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(8, 10, 16, 0.85);
+            backdrop-filter: blur(20px);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-        .pin-box {
-            background: var(--card); border: 1px solid rgba(255,255,255,0.1);
-            padding: 24px; border-radius: 20px; max-width: 380px; width: 100%;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        .pin-card {
+            background: rgba(22, 28, 42, 0.95);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            border-radius: 24px;
+            padding: 28px 24px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
         }
-        .pin-box h2 { font-size: 1.3rem; margin-bottom: 8px; color: #fff; }
-        .pin-box p { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 20px; line-height: 1.4; }
+        .pin-card h2 { font-size: 1.3rem; margin-bottom: 8px; color: #fff; }
+        .pin-card p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.4; }
         .pin-input {
-            width: 100%; font-size: 2.2rem; text-align: center; letter-spacing: 10px;
-            background: #0f111a; border: 2px solid rgba(0,210,255,0.3); color: var(--cyan);
-            border-radius: 12px; padding: 10px; margin-bottom: 16px; font-family: monospace; outline: none;
+            width: 100%;
+            font-size: 2.2rem;
+            text-align: center;
+            letter-spacing: 12px;
+            background: rgba(10, 14, 23, 0.8);
+            border: 2px solid rgba(0, 229, 255, 0.3);
+            color: var(--accent-cyan);
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-family: monospace;
+            outline: none;
         }
-        .pin-input:focus { border-color: var(--cyan); }
+        .pin-input:focus { border-color: var(--accent-cyan); }
         .btn-connect {
-            width: 100%; background: linear-gradient(135deg, var(--accent), var(--cyan));
-            color: #fff; border: none; padding: 14px; border-radius: 12px; font-size: 1.05rem; font-weight: bold; cursor: pointer;
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-cyan), #3b82f6);
+            color: #fff;
+            border: none;
+            padding: 14px;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 229, 255, 0.3);
         }
 
-        .section { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        .section-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 12px; }
+        /* Quick Bar under Header */
+        .top-action-bar {
+            display: flex;
+            gap: 10px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--card-border);
+            background: rgba(14, 18, 29, 0.4);
+        }
+        .quick-btn {
+            flex: 1;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            color: var(--text-main);
+            font-size: 0.82rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quick-btn:active { transform: scale(0.96); }
+        .quick-btn.active-grid { background: rgba(0, 229, 255, 0.2); border-color: var(--accent-cyan); color: var(--accent-cyan); }
+        .quick-btn.active-blackout { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; color: #ef4444; }
 
-        .quick-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        button {
-            background: var(--card); border: 1px solid rgba(255,255,255,0.1);
-            color: var(--text); padding: 12px; border-radius: 12px;
-            font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
-        }
-        button:active { transform: scale(0.97); }
-        button.btn-blackout { background: #221419; border-color: var(--accent); color: var(--accent); }
-        button.btn-add { background: #132433; border-color: var(--cyan); color: var(--cyan); }
+        /* Tab Content Containers */
+        .tab-content { display: none; padding: 16px; animation: fadeIn 0.25s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Window selector bar */
-        .window-tabs {
-            display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 10px;
+        /* Cards & Section Containers */
+        .app-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 18px;
+            padding: 16px;
+            margin-bottom: 14px;
+            backdrop-filter: blur(10px);
         }
-        .window-tab {
-            padding: 8px 14px; font-size: 0.85rem; border-radius: 10px; white-space: nowrap;
-            background: #181c2b; border: 1px solid rgba(255,255,255,0.1); color: var(--text-dim);
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
         }
-        .window-tab.active {
-            background: rgba(0, 210, 255, 0.2); border-color: var(--cyan); color: #fff; font-weight: bold;
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
         }
 
-        .shaders-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        .shader-card {
-            background: var(--card); border-radius: 10px; overflow: hidden;
-            border: 2px solid transparent; text-align: center; cursor: pointer;
+        /* Window Selector Tabs */
+        .window-tabs-container {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+            margin-bottom: 12px;
+            scrollbar-width: none;
         }
-        .shader-card.active { border-color: var(--accent); box-shadow: 0 0 12px rgba(255,75,114,0.4); }
-        .shader-card img { width: 100%; height: 75px; object-fit: cover; display: block; }
-        .shader-card span { display: block; padding: 6px 2px; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .window-tabs-container::-webkit-scrollbar { display: none; }
+        .win-tab-pill {
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            color: var(--text-muted);
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .win-tab-pill.active {
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(139, 92, 246, 0.2));
+            border-color: var(--accent-cyan);
+            color: #fff;
+            box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+        }
 
-        .slider-group { margin-bottom: 14px; }
-        .slider-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 6px; }
+        /* Interactive Canvas */
+        #maskCanvas {
+            width: 100%;
+            height: 220px;
+            background: #090c14;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            touch-action: none;
+            display: block;
+        }
+
+        /* Sliders & Form Controls */
+        .slider-row { margin-bottom: 12px; }
+        .slider-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+        .slider-meta span:last-child {
+            color: var(--accent-cyan);
+            font-weight: 700;
+        }
         input[type="range"] {
-            width: 100%; -webkit-appearance: none; background: #262c3f;
-            height: 6px; border-radius: 4px; outline: none;
+            width: 100%;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.08);
+            height: 6px;
+            border-radius: 4px;
+            outline: none;
         }
         input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none; width: 20px; height: 20px;
-            border-radius: 50%; background: var(--cyan); cursor: pointer;
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+            cursor: pointer;
         }
 
-        .yt-box { display: flex; gap: 8px; }
-        .yt-box input {
-            flex: 1; background: var(--card); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px; padding: 10px 14px; color: var(--text); font-size: 0.9rem; outline: none;
+        /* Grid Cards (Shaders & Gifs) */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        @media (min-width: 480px) {
+            .card-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        .visual-tile {
+            background: rgba(20, 25, 38, 0.8);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            overflow: hidden;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .visual-tile:active { transform: scale(0.97); }
+        .visual-tile.active {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 14px rgba(0, 229, 255, 0.35);
+        }
+        .visual-tile .preview-box {
+            width: 100%;
+            height: 85px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+        }
+        .visual-tile img {
+            width: 100%;
+            height: 85px;
+            object-fit: cover;
+            display: block;
+        }
+        .visual-tile .tile-label {
+            display: block;
+            padding: 8px 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #f1f5f9;
         }
 
-        #maskCanvas {
-            width: 100%; height: 220px; background: #000; border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.15); touch-action: none;
+        /* Buttons & Inputs */
+        button.action-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button.action-btn:active { transform: scale(0.96); }
+
+        .btn-gradient-cyan {
+            background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(59, 130, 246, 0.2));
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+        .btn-gradient-coral {
+            background: rgba(255, 71, 126, 0.15);
+            border-color: var(--accent-coral);
+            color: var(--accent-coral);
+        }
+        .btn-gradient-green {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        .input-stylish {
+            width: 100%;
+            background: rgba(14, 18, 28, 0.8);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 10px 14px;
+            color: #fff;
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-stylish:focus { border-color: var(--accent-cyan); }
+
+        /* Bottom Fixed Navigation Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            background: rgba(14, 18, 29, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 12px 14px 12px;
+            z-index: 100;
+        }
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+        .nav-item .nav-icon { font-size: 1.3rem; line-height: 1; }
+        .nav-item .nav-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.2px; }
+        .nav-item.active {
+            color: var(--accent-cyan);
+        }
+        .nav-item.active .nav-icon {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 6px var(--accent-cyan));
         }
     </style>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
+    <!-- PIN Connection Modal -->
     <div id="pinModal">
-        <div class="pin-box">
-            <h2>🔑 CONNECT TO PROJECTOR</h2>
-            <p>Enter the 4-digit PIN code displayed on your projector screen:</p>
+        <div class="pin-card">
+            <h2>✨ Connect to Projector</h2>
+            <p>Enter the 4-digit PIN code displayed on your wall / screen:</p>
             <input type="tel" id="inputPin" class="pin-input" maxlength="4" placeholder="----" autofocus />
             <button class="btn-connect" onclick="connectWithPin()">CONNECT 🚀</button>
         </div>
     </div>
 
+    <!-- Header -->
     <header>
-        <h1>📱 REMOTE CONTROLLER</h1>
-        <div id="connStatus" onclick="document.getElementById('pinModal').style.display='flex'">
-            <span class="status-dot" id="dot"></span><span id="statusText">Disconnected</span>
+        <div class="brand-title">
+            <span>✨</span> MAPING STUDIO
+        </div>
+        <div class="status-pill" id="connStatus" onclick="document.getElementById('pinModal').style.display='flex'">
+            <span class="status-dot" id="dot"></span>
+            <span id="statusText">Disconnected</span>
         </div>
     </header>
 
-    <div class="section">
-        <div class="quick-row" style="grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-            <button class="btn-blackout" id="blackoutBtn" onclick="toggleBlackout()">🌑 BLACKOUT</button>
-            <button class="btn-grid" id="gridBtn" style="background:#15222e; border-color:#00d2ff; color:#00d2ff;" onclick="toggleGrid()">📐 GRID / ALIGN</button>
-            <button class="btn-add" onclick="addWindow()">➕ ADD WIN</button>
+    <!-- Quick Actions Bar -->
+    <div class="top-action-bar">
+        <button class="quick-btn" id="gridBtn" onclick="toggleGrid()">📐 Siatka / Celownik</button>
+        <button class="quick-btn" id="blackoutBtn" onclick="toggleBlackout()">🌑 Wygaszenie</button>
+        <button class="quick-btn" onclick="addWindow()">➕ Nowe Okno</button>
+    </div>
+
+    <!-- Window Target Selector (Visible across all tabs) -->
+    <div style="padding: 12px 16px 0 16px;">
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; font-weight:600;">CEL PROJEKCJI:</div>
+        <div class="window-tabs-container" id="windowTabs">
+            <button class="win-tab-pill active" onclick="selectTargetWindow(-1)">🌍 Cały Pokój (Full Room)</button>
         </div>
     </div>
 
-    <!-- ROOM PRESETS & SCENES -->
-    <div class="section" style="background: rgba(255,255,255,0.02);">
-        <div class="section-title">💾 ROOM PRESETS & SCENES</div>
-        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-            <select id="presetSelect" style="flex: 1; background: var(--card); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 10px; border-radius: 10px; font-size: 0.85rem; outline: none;">
-                <option value="">-- Select Saved Preset --</option>
-            </select>
-            <button style="padding: 10px 14px; font-size: 0.85rem; background: rgba(0,255,136,0.15); border-color: #00ff88; color: #00ff88;" onclick="loadPreset()">LOAD</button>
-            <button style="padding: 10px 14px; font-size: 0.85rem; background: rgba(255,75,114,0.15); border-color: #ff4b72; color: #ff4b72;" onclick="deletePreset()">DEL</button>
-        </div>
-        <div style="display: flex; gap: 8px;">
-            <input type="text" id="presetNameInput" placeholder="Preset name (e.g. Living Room 2 Win)..." style="flex: 1; background: var(--card); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 0.85rem; outline: none;">
-            <button style="padding: 10px 16px; font-size: 0.85rem; background: rgba(0,210,255,0.15); border-color: #00d2ff; color: #00d2ff;" onclick="savePreset()">💾 SAVE</button>
-        </div>
-    </div>
-
-    <!-- MASK & TARGET WINDOW SELECTOR -->
-    <div class="section">
-        <div class="section-title">✂️ WINDOW MASKING & TARGET SELECTION</div>
-        
-        <!-- Pasek wyboru okna: do którego okna przypisujesz kolejny GIF/Shader -->
-        <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:6px;">Select active target window for media / shader:</div>
-        <div class="window-tabs" id="windowTabs">
-            <button class="window-tab active" onclick="selectTargetWindow(-1)">🌍 ALL / FULL ROOM</button>
-        </div>
-
-        <canvas id="maskCanvas"></canvas>
-        <div style="display:flex; justify-content:space-between; margin-top:8px;">
-            <button style="font-size:0.8rem; padding:8px 12px;" onclick="resetMasks()">Clear All Windows</button>
-            <button style="font-size:0.8rem; padding:8px 12px; background:rgba(255,75,114,0.15); color:#ff4b72; border-color:#ff4b72;" onclick="removeActiveWindow()">Remove Selected Win</button>
-            <span style="font-size:0.8rem; color:var(--text-dim); line-height:30px;" id="winCount">Windows: 0</span>
-        </div>
-    </div>
-
-    <!-- DIRECT FILE UPLOAD FROM PHONE -->
-    <div class="section">
-        <div class="section-title">📁 DIRECT UPLOAD FROM PHONE (PHOTO / VIDEO)</div>
-        <div style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(0,210,255,0.3); border-radius: 12px; padding: 14px; text-align: center;">
-            <input type="file" id="mediaUploadInput" accept="image/*,video/*" style="display:none;" onchange="handlePhoneUpload(event)">
-            <button style="width: 100%; background: linear-gradient(135deg, rgba(0,210,255,0.2), rgba(0,255,136,0.2)); border: 1px solid #00d2ff; color: #fff; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer;" onclick="document.getElementById('mediaUploadInput').click()">
-                📤 CHOOSE FILE FROM GALLERY / CAMERA
-            </button>
-            <div id="uploadStatusText" style="font-size: 0.8rem; color: var(--text-dim); margin-top: 8px;">Upload to selected window or full screen</div>
-        </div>
-    </div>
-
-    <!-- GIFS & MEMES (Targeted per window!) -->
-    <div class="section">
-        <div class="section-title" id="gifSectionTitle">🐱 ASSIGN GIF TO: 🌍 ALL / FULL ROOM</div>
-        
-        <!-- Panel precyzyjnego dopasowania GIF-a w oknie -->
-        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid rgba(0,210,255,0.2);">
-            <div style="font-weight:bold; font-size:0.85rem; color:var(--cyan); margin-bottom:8px;">🎯 Precision Window Alignment</div>
-            
-            <div class="slider-group" style="margin-bottom:8px;">
-                <div class="slider-label"><span>🔍 Zoom / Scale</span><span id="val_gif_scale">100%</span></div>
-                <input type="range" id="slider_gif_scale" min="0.1" max="3.0" step="0.05" value="1.0" oninput="updateGifScale(this.value)">
+    <!-- TAB 1: 🪟 WINDOWS & FRAMES -->
+    <div class="tab-content active" id="tab-windows">
+        <!-- Canvas Mask Editor -->
+        <div class="app-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">✂️ Kształt i Pozycja Okien</div>
+                    <div class="card-subtitle">Dotknij i przeciągaj wierzchołki, aby dopasować ramę</div>
+                </div>
+                <span style="font-size:0.8rem; color:var(--accent-cyan); font-weight:bold;" id="winCount">Okna: 0</span>
             </div>
-
-            <div class="slider-group" style="margin-bottom:8px;">
-                <div class="slider-label"><span>↔️ Position X (Horizontal)</span><span id="val_gif_x">0%</span></div>
-                <input type="range" id="slider_gif_x" min="-100" max="100" step="2" value="0" oninput="updateGifPos('X', this.value)">
-            </div>
-
-            <div class="slider-group" style="margin-bottom:10px;">
-                <div class="slider-label"><span>↕️ Position Y (Vertical)</span><span id="val_gif_y">0%</span></div>
-                <input type="range" id="slider_gif_y" min="-100" max="100" step="2" value="0" oninput="updateGifPos('Y', this.value)">
-            </div>
-
-            <div style="display:flex; justify-content:space-between; gap:6px;">
-                <button style="flex:1; padding:6px 8px; font-size:0.75rem;" onclick="setGifFit('contain')">Fit (Contain)</button>
-                <button style="flex:1; padding:6px 8px; font-size:0.75rem;" onclick="setGifFit('cover')">Fill (Cover)</button>
-                <button style="flex:1; padding:6px 8px; font-size:0.75rem; background:#221419; color:var(--accent);" onclick="resetGifTransform()">Reset Center</button>
+            <canvas id="maskCanvas"></canvas>
+            <div style="display:flex; justify-content:space-between; gap:8px; margin-top:10px;">
+                <button class="action-btn btn-gradient-coral" style="flex:1;" onclick="removeActiveWindow()">🗑️ Usuń to Okno</button>
+                <button class="action-btn" style="flex:1;" onclick="clearActiveMedia()">❌ Wyczyść Treść</button>
+                <button class="action-btn" onclick="resetMasks()">Wyczyść Wszystko</button>
             </div>
         </div>
 
-        <!-- NOWOŚĆ: PODZIAŁ SZPROSÓW / RAMY OKIENNE (Mullions & Window Dividers) -->
-        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid rgba(0,255,136,0.2);">
-            <div style="font-weight:bold; font-size:0.85rem; color:#00ff88; margin-bottom:8px;">🪟 Window Frames & Mullions (Szprosy)</div>
-            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; margin-bottom:10px;">
-                <button style="padding:6px 4px; font-size:0.75rem;" id="mull_none" onclick="setWindowMullion('none')">Single (Brak)</button>
-                <button style="padding:6px 4px; font-size:0.75rem;" id="mull_vert" onclick="setWindowMullion('vertical')">Pionowy ◫</button>
-                <button style="padding:6px 4px; font-size:0.75rem;" id="mull_horiz" onclick="setWindowMullion('horizontal')">Poziomy ▤</button>
-                <button style="padding:6px 4px; font-size:0.75rem;" id="mull_cross" onclick="setWindowMullion('cross')">Krzyżak ⊞</button>
+        <!-- Window Mullions & Dividers -->
+        <div class="app-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">🪟 Szprosy i Ramy Okienne</div>
+                    <div class="card-subtitle">Wytnij plastikowe belki, aby świecić tylko w szyby</div>
+                </div>
             </div>
-            <div class="slider-group" style="margin-bottom:0;">
-                <div class="slider-label"><span>Rama / Grubość szprosu</span><span id="val_mull_thick">5%</span></div>
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-bottom:12px;">
+                <button class="action-btn" id="mull_none" style="border-color:var(--accent-green);" onclick="setWindowMullion('none')">Brak</button>
+                <button class="action-btn" id="mull_vert" onclick="setWindowMullion('vertical')">Pion ◫</button>
+                <button class="action-btn" id="mull_horiz" onclick="setWindowMullion('horizontal')">Poziom ▤</button>
+                <button class="action-btn" id="mull_cross" onclick="setWindowMullion('cross')">Krzyżak ⊞</button>
+            </div>
+            <div class="slider-row" style="margin-bottom:0;">
+                <div class="slider-meta"><span>Grubość belki szprosu</span><span id="val_mull_thick">5%</span></div>
                 <input type="range" id="slider_mull_thick" min="1" max="15" step="1" value="5" oninput="updateMullionThick(this.value)">
             </div>
         </div>
 
-        <!-- NOWOŚĆ: NIEZALEŻNY START I FX DLA AKTYWNEGO OKNA (Per-Window FX & Stagger Delay) -->
-        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid rgba(255,75,114,0.2);">
-            <div style="font-weight:bold; font-size:0.85rem; color:var(--accent); margin-bottom:8px;">⏱️ Independent Window FX & Start Delay</div>
-            
-            <div class="slider-group" style="margin-bottom:8px;">
-                <div class="slider-label"><span>⏳ Start Delay (Stagger)</span><span id="val_win_delay">0s</span></div>
+        <!-- Saved Room Presets -->
+        <div class="app-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">💾 Zapisane Pokoje i Układy</div>
+                    <div class="card-subtitle">Zapisz ustawienie salonu lub sypialni na stałe</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+                <select id="presetSelect" class="input-stylish" style="flex:1;">
+                    <option value="">-- Wybierz zapisany pokój --</option>
+                </select>
+                <button class="action-btn btn-gradient-green" onclick="loadPreset()">Wczytaj</button>
+                <button class="action-btn btn-gradient-coral" onclick="deletePreset()">Usuń</button>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="presetNameInput" placeholder="Nazwa nowego profilu (np. Salon 2 Okna)..." class="input-stylish" style="flex:1;">
+                <button class="action-btn btn-gradient-cyan" onclick="savePreset()">Zapisz 💾</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: 🎨 WIDOKI & PEJZAŻE (SHADERS) -->
+    <div class="tab-content" id="tab-views">
+        <div class="app-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">🌿 Autorskie Widoki i Pejzaże</div>
+                    <div class="card-subtitle">Fotorealistyczne scenerie i nastrojowe animacje</div>
+                </div>
+            </div>
+            <div class="card-grid" id="shaderList"></div>
+        </div>
+    </div>
+
+    <!-- TAB 3: 🎬 MEDIA & GIFS -->
+    <div class="tab-content" id="tab-media">
+        <!-- Direct Upload from Phone -->
+        <div class="app-card" style="text-align:center;">
+            <div class="card-title" style="justify-content:center; margin-bottom:4px;">📤 Zdjęcie lub Film z Telefonu</div>
+            <div class="card-subtitle" style="margin-bottom:12px;">Wybierz dowolne wideo lub grafikę bezpośrednio z galerii</div>
+            <input type="file" id="mediaUploadInput" accept="image/*,video/*" style="display:none;" onchange="handlePhoneUpload(event)">
+            <button class="action-btn btn-gradient-cyan" style="width:100%; padding:12px;" onclick="document.getElementById('mediaUploadInput').click()">
+                🖼️ WYBIERZ Z GALERII TELEFONU
+            </button>
+            <div id="uploadStatusText" style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;">Gotowy do wysłania na wybrane okno</div>
+        </div>
+
+        <!-- Precision Transform (Zoom, Shift, Fit) -->
+        <div class="app-card">
+            <div class="card-title" style="margin-bottom:10px;">🎯 Dopasowanie Mediów w Ramie</div>
+            <div class="slider-row">
+                <div class="slider-meta"><span>Powiększenie (Zoom)</span><span id="val_gif_scale">100%</span></div>
+                <input type="range" id="slider_gif_scale" min="0.1" max="3.0" step="0.05" value="1.0" oninput="updateGifScale(this.value)">
+            </div>
+            <div class="slider-row">
+                <div class="slider-meta"><span>Przesunięcie w poziomie (X)</span><span id="val_gif_x">0%</span></div>
+                <input type="range" id="slider_gif_x" min="-100" max="100" step="2" value="0" oninput="updateGifPos('X', this.value)">
+            </div>
+            <div class="slider-row">
+                <div class="slider-meta"><span>Przesunięcie w pionie (Y)</span><span id="val_gif_y">0%</span></div>
+                <input type="range" id="slider_gif_y" min="-100" max="100" step="2" value="0" oninput="updateGifPos('Y', this.value)">
+            </div>
+            <div style="display:flex; gap:6px;">
+                <button class="action-btn" style="flex:1;" onclick="setGifFit('contain')">Dopasuj (Contain)</button>
+                <button class="action-btn" style="flex:1;" onclick="setGifFit('cover')">Wypełnij (Cover)</button>
+                <button class="action-btn btn-gradient-coral" style="flex:1;" onclick="resetGifTransform()">Wyśrodkuj</button>
+            </div>
+        </div>
+
+        <!-- GIF Loops & Direct Caster -->
+        <div class="app-card">
+            <div class="card-title" style="margin-bottom:8px;">🚀 Popularne Animacje GIF</div>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+                <input type="text" id="customGifInput" placeholder="Wklej dowolny link do GIF-a z sieci..." class="input-stylish" onkeydown="if(event.key==='Enter') applyCustomGif()">
+                <button class="action-btn btn-gradient-cyan" onclick="applyCustomGif()">Odtwórz</button>
+            </div>
+            <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:10px; scrollbar-width:none;">
+                <button class="action-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="filterGifs('party')">🎉 Impreza</button>
+                <button class="action-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="filterGifs('trippy')">🌀 Neon & VJ</button>
+                <button class="action-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="filterGifs('memes')">😂 Memy</button>
+                <button class="action-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="filterGifs('nature')">🔥 Natura</button>
+            </div>
+            <div class="card-grid" id="gifGrid"></div>
+        </div>
+
+        <!-- Cast YouTube Video -->
+        <div class="app-card">
+            <div class="card-title" style="margin-bottom:8px;">▶️ YouTube Video na Żywo</div>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="ytUrl" placeholder="Wklej link z YouTube..." class="input-stylish">
+                <button class="action-btn btn-gradient-coral" onclick="sendYouTube()">ODPAL</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: ✨ KLIMAT & EFEKTY (ATMOSPHERE) -->
+    <div class="tab-content" id="tab-mood">
+        <!-- Surprise Atmosphere Triggers -->
+        <div class="app-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">⚡ Efekty Niespodzianki za Oknem</div>
+                    <div class="card-subtitle">Subtelne akcenty ożywiające pokój</div>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:12px;">
+                <button class="action-btn" style="border-color:#fff;" onclick="triggerAtmosphere('lightning')">⚡ Błyskawica</button>
+                <button class="action-btn btn-gradient-cyan" onclick="triggerAtmosphere('shadow')">🐈 Cień Kota</button>
+                <button class="action-btn btn-gradient-coral" onclick="triggerAtmosphere('star')">🌠 Meteor</button>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:10px 14px; border-radius:12px; border:1px solid var(--card-border);">
+                <div>
+                    <div style="font-size:0.85rem; font-weight:600;">🎲 Losowy Cykl Niespodzianek</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">Samoczynne wyzwalanie co ~25 sekund</div>
+                </div>
+                <button id="autoAtmosphereBtn" class="action-btn" onclick="toggleAutoAtmosphere()">WYŁĄCZONE</button>
+            </div>
+        </div>
+
+        <!-- Independent Window Delay & Speed -->
+        <div class="app-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">⏱️ Niezależny Rytm Okna</div>
+                    <div class="card-subtitle">Ustaw opóźnienie startu, aby okna nie zapętlały się identycznie</div>
+                </div>
+            </div>
+            <div class="slider-row">
+                <div class="slider-meta"><span>Opóźnienie startu (Stagger Delay)</span><span id="val_win_delay">0s</span></div>
                 <input type="range" id="slider_win_delay" min="0" max="10" step="1" value="0" oninput="updateWinParam('delay', this.value, 'val_win_delay', 's')">
             </div>
-
-            <div class="slider-group" style="margin-bottom:8px;">
-                <div class="slider-label"><span>⚡ Window Speed</span><span id="val_win_speed">1.0x</span></div>
+            <div class="slider-row">
+                <div class="slider-meta"><span>Indywidualna prędkość okna</span><span id="val_win_speed">1.0x</span></div>
                 <input type="range" id="slider_win_speed" min="0.2" max="3.0" step="0.1" value="1.0" oninput="updateWinParam('speed', this.value, 'val_win_speed', 'x')">
             </div>
-
-            <div class="slider-group" style="margin-bottom:0;">
-                <div class="slider-label"><span>💡 Window Brightness</span><span id="val_win_bright">100%</span></div>
+            <div class="slider-row" style="margin-bottom:0;">
+                <div class="slider-meta"><span>Indywidualna jasność okna</span><span id="val_win_bright">100%</span></div>
                 <input type="range" id="slider_win_bright" min="0.1" max="1.5" step="0.05" value="1.0" oninput="updateWinParam('brightness', this.value, 'val_win_bright', '%')">
             </div>
         </div>
 
-        <!-- Bezpośrednia wyszukiwarka / wklejanie dowolnego GIFa z sieci -->
-        <div style="display:flex; gap:8px; margin-bottom:12px;">
-            <input type="text" id="customGifInput" placeholder="Paste direct GIF/image URL..." style="flex:1; background:var(--card); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:10px 12px; color:#fff; font-size:0.85rem; outline:none;" onkeydown="if(event.key==='Enter') applyCustomGif()">
-            <button style="padding:10px 16px; font-size:0.85rem; background:rgba(0,210,255,0.2); border-color:#00d2ff; color:#00d2ff;" onclick="applyCustomGif()">PLAY GIF 🚀</button>
-        </div>
-
-        <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:6px;">Or choose from curated popular loops:</div>
-        <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:8px;">
-            <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('party')">🎉 Party & Dance</button>
-            <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('trippy')">🌀 Trippy & Neon</button>
-            <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('memes')">😂 Classic Memes</button>
-            <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('nature')">🔥 Fire & Space</button>
-        </div>
-        <div class="shaders-grid" id="gifGrid"></div>
-    </div>
-
-    <!-- NOWOŚĆ: ATMOSPHERE & SURPRISE FX -->
-    <div class="section">
-        <div class="section-title">⚡ ATMOSPHERE & SURPRISE FX</div>
-        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:10px;">
-            <button style="background:rgba(255,255,255,0.08); border-color:#fff; color:#fff; font-size:0.8rem; padding:10px 6px;" onclick="triggerAtmosphere('lightning')">⚡ LIGHTNING</button>
-            <button style="background:rgba(0,210,255,0.08); border-color:#00d2ff; color:#00d2ff; font-size:0.8rem; padding:10px 6px;" onclick="triggerAtmosphere('shadow')">🐈 CAT PASS</button>
-            <button style="background:rgba(255,75,114,0.08); border-color:#ff4b72; color:#ff4b72; font-size:0.8rem; padding:10px 6px;" onclick="triggerAtmosphere('star')">🌠 SHOOT STAR</button>
-        </div>
-        <div style="display:flex; align-items:center; justify-content:space-between; background:var(--card); padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
-            <span style="font-size:0.85rem; color:#fff;">🎲 Auto-Surprise (Random Loop)</span>
-            <button id="autoAtmosphereBtn" style="padding:6px 12px; font-size:0.8rem;" onclick="toggleAutoAtmosphere()">DISABLED</button>
+        <!-- Global Mood Sliders -->
+        <div class="app-card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">🎛️ Globalne Parametry Światła</div>
+                    <div class="card-subtitle">Wspólna jasność i tonacja całej ściany</div>
+                </div>
+            </div>
+            <div class="slider-row">
+                <div class="slider-meta"><span>Ogólna Jasność</span><span id="val_bright">1.0</span></div>
+                <input type="range" min="0.1" max="2.0" step="0.1" value="1.0" oninput="updateUniform('u_brightness', this.value, 'val_bright')">
+            </div>
+            <div class="slider-row">
+                <div class="slider-meta"><span>Tempo Animacji</span><span id="val_speed">1.0</span></div>
+                <input type="range" min="0.1" max="3.0" step="0.1" value="1.0" oninput="updateUniform('u_timeSpeed', this.value, 'val_speed')">
+            </div>
+            <div class="slider-row" style="margin-bottom:0;">
+                <div class="slider-meta"><span>Odcień Barw (Hue Shift)</span><span id="val_hue">0.0</span></div>
+                <input type="range" min="0.0" max="1.0" step="0.05" value="0.0" oninput="updateUniform('u_hueShift', this.value, 'val_hue')">
+            </div>
         </div>
     </div>
 
-    <!-- EFFECT CONTROLS -->
-    <div class="section">
-        <div class="section-title">🎛️ GLOBAL SHADER CONTROLS</div>
-        <div class="slider-group">
-            <div class="slider-label"><span>Animation Speed</span><span id="val_speed">1.0</span></div>
-            <input type="range" min="0.1" max="3.0" step="0.1" value="1.0" oninput="updateUniform('u_timeSpeed', this.value, 'val_speed')">
-        </div>
-        <div class="slider-group">
-            <div class="slider-label"><span>Color (Hue Shift)</span><span id="val_hue">0.0</span></div>
-            <input type="range" min="0.0" max="1.0" step="0.05" value="0.0" oninput="updateUniform('u_hueShift', this.value, 'val_hue')">
-        </div>
-        <div class="slider-group">
-            <div class="slider-label"><span>Brightness</span><span id="val_bright">1.0</span></div>
-            <input type="range" min="0.1" max="2.0" step="0.1" value="1.0" oninput="updateUniform('u_brightness', this.value, 'val_bright')">
-        </div>
-        <div class="slider-group">
-            <div class="slider-label"><span>Zoom / Scale</span><span id="val_zoom">1.0</span></div>
-            <input type="range" min="0.3" max="3.0" step="0.1" value="1.0" oninput="updateUniform('u_zoom', this.value, 'val_zoom')">
-        </div>
-    </div>
-
-    <!-- YOUTUBE -->
-    <div class="section">
-        <div class="section-title">▶️ CAST YOUTUBE VIDEO</div>
-        <div class="yt-box">
-            <input type="text" id="ytUrl" placeholder="Paste YouTube link or ID...">
-            <button onclick="sendYouTube()">CAST</button>
-        </div>
-    </div>
-
-    <!-- SHADERS -->
-    <div class="section">
-        <div class="section-title">🎨 SELECT PROJECTION SHADER</div>
-        <div class="shaders-grid" id="shaderList"></div>
-    </div>
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('tab-windows', this)">
+            <span class="nav-icon">🪟</span>
+            <span class="nav-label">OKNA</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('tab-views', this)">
+            <span class="nav-icon">🎨</span>
+            <span class="nav-label">WIDOKI</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('tab-media', this)">
+            <span class="nav-icon">🎬</span>
+            <span class="nav-label">MEDIA</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('tab-mood', this)">
+            <span class="nav-icon">✨</span>
+            <span class="nav-label">KLIMAT</span>
+        </button>
+    </nav>
 
     <script>
+        // Tab switching logic
+        function switchTab(tabId, btn) {
+            document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+            document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
+            document.getElementById(tabId).classList.add("active");
+            btn.classList.add("active");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            if (tabId === "tab-windows") {
+                setTimeout(resizeMaskCanvas, 50);
+            }
+        }
+
         const dot = document.getElementById("dot");
         const statusText = document.getElementById("statusText");
         const pinModal = document.getElementById("pinModal");
@@ -321,9 +690,8 @@
         let isBlackout = false;
         let targetPeerId = null;
 
-        let activeWindowIndex = -1; // -1 = All / Global, 0 = Window 1, 1 = Window 2...
+        let activeWindowIndex = -1; // -1 = All / Full Room
 
-        // Pełna konfiguracja ICE (STUN) do przebijania NAT między różnymi sieciami (LTE <-> Domowe Wi-Fi)
         const peerConfig = {
             config: {
                 iceServers: [
@@ -337,11 +705,12 @@
                 iceCandidatePoolSize: 10
             }
         };
+
         let peerReady = false;
         const peer = new Peer(undefined, peerConfig);
         peer.on("open", () => {
             peerReady = true;
-            statusText.innerText = "Ready to connect";
+            statusText.innerText = "Gotowy";
             if (urlPin) {
                 inputPin.value = urlPin;
                 connectWithPin();
@@ -352,23 +721,23 @@
 
         peer.on("error", (err) => {
             console.error("PeerJS error:", err);
-            statusText.innerText = "Error: " + err.type;
+            statusText.innerText = "Błąd: " + err.type;
         });
 
         function connectWithPin() {
             const pin = inputPin.value.trim();
             if (pin.length !== 4) {
-                alert("Please enter a 4-digit PIN!");
+                alert("Wpisz 4-cyfrowy kod PIN z ekranu!");
                 return;
             }
             if (!peerReady) {
-                statusText.innerText = "Waiting for network...";
+                statusText.innerText = "Czekam na sieć...";
                 setTimeout(connectWithPin, 300);
                 return;
             }
             targetPeerId = "hy320-room-" + pin;
-            statusText.innerText = "Connecting to #" + pin + "...";
-            document.querySelector(".btn-connect").innerText = "CONNECTING...";
+            statusText.innerText = "Łączenie z #" + pin + "...";
+            document.querySelector(".btn-connect").innerText = "ŁĄCZENIE...";
 
             if (conn) {
                 try { conn.close(); } catch(e){}
@@ -378,58 +747,52 @@
 
             conn.on("open", () => {
                 dot.className = "status-dot online";
-                statusText.innerText = "Connected (#" + pin + ")";
-                document.querySelector(".btn-connect").innerText = "CONNECTED!";
+                statusText.innerText = "Połączono (#" + pin + ")";
+                document.querySelector(".btn-connect").innerText = "POŁĄCZONO! ✨";
                 pinModal.style.display = "none";
                 localStorage.setItem("last_maping_pin", pin);
 
-                // Jeśli pilot ma zapisane okna lokalnie, również je zachowaj
                 const localWindows = localStorage.getItem("maping_windows_" + pin);
                 if (localWindows) {
                     try {
                         windows = JSON.parse(localWindows);
+                        document.getElementById("winCount").innerText = "Okna: " + windows.length;
                         updateWindowTabs();
                         drawMaskCanvas();
                     } catch(e){}
                 }
             });
 
-            // Odbieraj aktualny stan z projektora przy ponownym wejściu (wstecz w przeglądarce)
             conn.on("data", (data) => {
                 if (data.type === "sync_state" && data.state) {
                     if (data.state.windows && data.state.windows.length > 0) {
                         windows = data.state.windows;
-                        document.getElementById("winCount").innerText = "Windows: " + windows.length;
+                        document.getElementById("winCount").innerText = "Okna: " + windows.length;
                         updateWindowTabs();
                         drawMaskCanvas();
                     }
                     if (data.state.grid !== undefined) {
                         isGrid = !!data.state.grid;
                         const btn = document.getElementById("gridBtn");
-                        if (btn) {
-                            btn.style.background = isGrid ? "#00d2ff" : "#15222e";
-                            btn.style.color = isGrid ? "#000" : "#00d2ff";
-                        }
+                        if (btn) btn.classList.toggle("active-grid", isGrid);
                     }
-                    if (data.state.uniforms) {
-                        if (data.state.uniforms.u_timeSpeed) {
-                            document.getElementById("val_speed").innerText = data.state.uniforms.u_timeSpeed;
-                        }
+                    if (data.state.uniforms && data.state.uniforms.u_timeSpeed) {
+                        document.getElementById("val_speed").innerText = data.state.uniforms.u_timeSpeed;
                     }
                 }
             });
 
             conn.on("close", () => {
                 dot.className = "status-dot";
-                statusText.innerText = "Disconnected";
+                statusText.innerText = "Rozłączono";
                 document.querySelector(".btn-connect").innerText = "CONNECT 🚀";
             });
 
             conn.on("error", (err) => {
                 console.error("Conn error:", err);
-                statusText.innerText = "Failed to connect";
+                statusText.innerText = "Nieudane";
                 document.querySelector(".btn-connect").innerText = "CONNECT 🚀";
-                alert("Connection failed! Make sure the projector has display.html open with PIN #" + pin);
+                alert("Nie udało się połączyć! Upewnij się, że projektor ma otwarte display.html z kodem PIN #" + pin);
             });
         }
 
@@ -447,7 +810,7 @@
 
         function toggleBlackout() {
             isBlackout = !isBlackout;
-            document.getElementById("blackoutBtn").style.background = isBlackout ? "var(--accent)" : "#221419";
+            document.getElementById("blackoutBtn").classList.toggle("active-blackout", isBlackout);
             send({ type: "blackout", state: isBlackout });
         }
 
@@ -465,6 +828,7 @@
             if (id) send({ type: "youtube", id: id });
         }
 
+        // Baza lokalnych GIF-ów bez żadnych blokad
         const gifDatabase = {
             party: [
                 { name: "Neon Cat Dance", url: "assets/gifs/neon_cat.gif" },
@@ -518,17 +882,15 @@
             grid.innerHTML = "";
             list.forEach(g => {
                 const card = document.createElement("div");
-                card.className = "shader-card";
-                card.innerHTML = `<img src="${g.url}" loading="lazy"><span>${g.name}</span>`;
+                card.className = "visual-tile";
+                card.innerHTML = `<img src="${g.url}" loading="lazy"><span class="tile-label">${g.name}</span>`;
                 card.onclick = () => {
-                    document.querySelectorAll(".shader-card").forEach(c => c.classList.remove("active"));
+                    document.querySelectorAll("#gifGrid .visual-tile").forEach(c => c.classList.remove("active"));
                     card.classList.add("active");
                     
                     if (activeWindowIndex === -1) {
-                        // Globalny GIF na cały ekran
                         send({ type: "gif", url: g.url });
                     } else if (windows[activeWindowIndex]) {
-                        // Indywidualny GIF dla tego konkretnego okna!
                         windows[activeWindowIndex].mediaUrl = g.url;
                         windows[activeWindowIndex].shaderFile = null;
                         updateWindowTabs();
@@ -586,14 +948,14 @@
             }
         }
 
-        // OBSŁUGA SZPROSÓW / RAM OKIENNYCH
+        // Szprosy okienne
         function setWindowMullion(type) {
             ['none', 'vert', 'horiz', 'cross'].forEach(t => {
                 const btn = document.getElementById('mull_' + t);
-                if (btn) btn.style.borderColor = 'rgba(255,255,255,0.1)';
+                if (btn) btn.style.borderColor = 'var(--card-border)';
             });
             const activeBtn = document.getElementById('mull_' + (type === 'vertical' ? 'vert' : type === 'horizontal' ? 'horiz' : type));
-            if (activeBtn) activeBtn.style.borderColor = '#00ff88';
+            if (activeBtn) activeBtn.style.borderColor = 'var(--accent-green)';
 
             if (windows[activeWindowIndex]) {
                 windows[activeWindowIndex].mullionType = type;
@@ -609,7 +971,6 @@
             }
         }
 
-        // OBSŁUGA NIEZALEŻNYCH PARAMETRÓW OKNA (FX & Stagger Delay)
         function updateWinParam(param, val, labelId, unit) {
             document.getElementById(labelId).innerText = val + unit;
             const num = parseFloat(val);
@@ -619,7 +980,7 @@
             }
         }
 
-        // ATMOSPHERE & SURPRISE FX
+        // Atmosfera
         function triggerAtmosphere(effect) {
             send({ type: "atmosphere", effect: effect });
         }
@@ -630,14 +991,11 @@
             if (autoAtmosphereTimer) {
                 clearInterval(autoAtmosphereTimer);
                 autoAtmosphereTimer = null;
-                btn.innerText = "DISABLED";
-                btn.style.background = "var(--card)";
-                btn.style.color = "var(--text)";
+                btn.innerText = "WYŁĄCZONE";
+                btn.classList.remove("btn-gradient-coral");
             } else {
-                btn.innerText = "ACTIVE ⚡";
-                btn.style.background = "#ff4b72";
-                btn.style.color = "#fff";
-                // Losowo co 20 - 45 sekund wyzwala losowy efekt za oknem
+                btn.innerText = "AKTYWNE ⚡";
+                btn.classList.add("btn-gradient-coral");
                 autoAtmosphereTimer = setInterval(() => {
                     const fxList = ["lightning", "shadow", "star"];
                     const chosen = fxList[Math.floor(Math.random() * fxList.length)];
@@ -650,27 +1008,25 @@
         function toggleGrid() {
             isGrid = !isGrid;
             const btn = document.getElementById("gridBtn");
-            btn.style.background = isGrid ? "#00d2ff" : "#15222e";
-            btn.style.color = isGrid ? "#000" : "#00d2ff";
+            btn.classList.toggle("active-grid", isGrid);
             send({ type: "grid", enabled: isGrid });
         }
 
-        // ROOM PRESETS & SCENES
+        // Profile pokoju
         const PRESETS_STORAGE_KEY = "maping_room_presets";
         function getStoredPresets() {
-            try {
-                return JSON.parse(localStorage.getItem(PRESETS_STORAGE_KEY)) || {};
-            } catch(e) { return {}; }
+            try { return JSON.parse(localStorage.getItem(PRESETS_STORAGE_KEY)) || {}; }
+            catch(e) { return {}; }
         }
 
         function refreshPresetDropdown() {
             const select = document.getElementById("presetSelect");
             const presets = getStoredPresets();
-            select.innerHTML = '<option value="">-- Select Saved Preset --</option>';
+            select.innerHTML = '<option value="">-- Wybierz zapisany pokój --</option>';
             for (let name in presets) {
                 const opt = document.createElement("option");
                 opt.value = name;
-                opt.textContent = `${name} (${presets[name].length} wins)`;
+                opt.textContent = `${name} (${presets[name].length} okna)`;
                 select.appendChild(opt);
             }
         }
@@ -679,30 +1035,24 @@
         function savePreset() {
             const nameInput = document.getElementById("presetNameInput");
             const name = nameInput.value.trim();
-            if (!name) {
-                alert("Please enter a preset name!");
-                return;
-            }
+            if (!name) { alert("Podaj nazwę profilu pokoju!"); return; }
             const presets = getStoredPresets();
             presets[name] = JSON.parse(JSON.stringify(windows));
             localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
             nameInput.value = "";
             refreshPresetDropdown();
-            alert(`Preset "${name}" saved! ✨`);
+            alert(`Profil "${name}" został pomyślnie zapisany! ✨`);
         }
 
         function loadPreset() {
             const select = document.getElementById("presetSelect");
             const name = select.value;
-            if (!name) {
-                alert("Please select a preset to load!");
-                return;
-            }
+            if (!name) { alert("Wybierz profil z listy!"); return; }
             const presets = getStoredPresets();
             if (presets[name]) {
                 windows = JSON.parse(JSON.stringify(presets[name]));
                 activeWindowIndex = windows.length > 0 ? 0 : -1;
-                document.getElementById("winCount").innerText = "Windows: " + windows.length;
+                document.getElementById("winCount").innerText = "Okna: " + windows.length;
                 updateWindowTabs();
                 drawMaskCanvas();
                 send({ type: "masks", windows: windows });
@@ -713,7 +1063,7 @@
             const select = document.getElementById("presetSelect");
             const name = select.value;
             if (!name) return;
-            if (confirm(`Delete preset "${name}"?`)) {
+            if (confirm(`Usunąć profil "${name}"?`)) {
                 const presets = getStoredPresets();
                 delete presets[name];
                 localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
@@ -721,78 +1071,83 @@
             }
         }
 
+        function clearActiveMedia() {
+            if (activeWindowIndex >= 0 && windows[activeWindowIndex]) {
+                windows[activeWindowIndex].mediaUrl = null;
+                windows[activeWindowIndex].shaderFile = null;
+                updateWindowTabs();
+                drawMaskCanvas();
+                send({ type: "masks", windows: windows });
+            } else if (activeWindowIndex === -1) {
+                send({ type: "shader", file: "cyber_aurora.glsl" });
+            }
+        }
+
         function removeActiveWindow() {
             if (activeWindowIndex >= 0 && activeWindowIndex < windows.length) {
                 windows.splice(activeWindowIndex, 1);
                 activeWindowIndex = windows.length > 0 ? Math.min(activeWindowIndex, windows.length - 1) : -1;
-                document.getElementById("winCount").innerText = "Windows: " + windows.length;
+                document.getElementById("winCount").innerText = "Okna: " + windows.length;
                 updateWindowTabs();
                 drawMaskCanvas();
                 send({ type: "masks", windows: windows });
             } else {
-                alert("Select a specific window tab first to remove it!");
+                alert("Wybierz konkretne okno, które chcesz usunąć!");
             }
         }
 
-        // DIRECT FILE UPLOAD FROM PHONE
         function handlePhoneUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
             const status = document.getElementById("uploadStatusText");
-            status.innerText = `Reading "${file.name}" (${(file.size / 1024).toFixed(1)} KB)...`;
+            status.innerText = `Wysyłam: ${file.name} (${(file.size / 1024).toFixed(0)} KB)...`;
 
             const reader = new FileReader();
             reader.onload = function(e) {
                 const dataUrl = e.target.result;
-                status.innerText = `Uploaded: ${file.name} ✅`;
+                status.innerText = `Wysłano: ${file.name} ✅`;
 
                 if (activeWindowIndex === -1) {
-                    // Ekran globalny
                     send({ type: "gif", url: dataUrl });
                 } else if (windows[activeWindowIndex]) {
-                    // Dedykowane okno
                     windows[activeWindowIndex].mediaUrl = dataUrl;
-                    windows[activeWindowIndex].shaderFile = null; // usun ew. shader na rzecz mediów
+                    windows[activeWindowIndex].shaderFile = null;
                     updateWindowTabs();
                     drawMaskCanvas();
                     send({ type: "masks", windows: windows });
                 }
             };
-            reader.onerror = function() {
-                status.innerText = "Upload failed!";
-            };
             reader.readAsDataURL(file);
         }
 
+        // Kolekcja shaderów
         const shaders = [
-            { file: "rainy_window.glsl", name: "🌧️ Rainy Window", bg: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)" },
-            { file: "fireplace_flame.glsl", name: "🪵 Fireplace", bg: "linear-gradient(180deg, #1a0000 0%, #ff3300 70%, #ffcc00 100%)" },
-            { file: "moonlit_clouds.glsl", name: "🌕 Moonlit Night", bg: "linear-gradient(135deg, #030814, #121f3d, #e8f0fe)" },
-            { file: "sunbeams_dust.glsl", name: "☀️ Sunbeams Dust", bg: "linear-gradient(135deg, #2b1800, #b37d14, #fceabb)" },
-            { file: "ocean_caustics.glsl", name: "🌊 Ocean Water", bg: "linear-gradient(135deg, #0052d4, #4364f7, #6fb1fc)" },
-            { file: "cyber_aurora.glsl", name: "🌌 Cyber Aurora", bg: "linear-gradient(135deg, #0b1a30, #00d2ff, #7928ca)" },
-            { file: "hyperspace_warp.glsl", name: "✨ Hyperspace", bg: "radial-gradient(circle, #00ff88, #002244, #000)" },
-            { file: "neon_lava.glsl", name: "🔥 Neon Lava", bg: "linear-gradient(135deg, #ff007f, #ffaa00, #33001b)" },
-            { file: "synthwave_grid.glsl", name: "📐 Synthwave", bg: "linear-gradient(180deg, #12002b 0%, #ff007f 60%, #00ffff 100%)" },
-            { file: "techno_pulse.glsl", name: "🪩 Techno Pulse", bg: "radial-gradient(circle, #ff0055, #110033, #050510)" },
-            { file: "electric_arc.glsl", name: "⚡ Electric Arc", bg: "linear-gradient(135deg, #051429, #00d2ff, #ffffff)" },
-            { file: "zen_blossom.glsl", name: "🌸 Zen Blossom", bg: "radial-gradient(circle, #ff758c, #ff7eb3, #1e0826)" }
+            { file: "rainy_window.glsl", name: "🌧️ Deszcz za Szybą", bg: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)" },
+            { file: "fireplace_flame.glsl", name: "🪵 Ogień z Kominka", bg: "linear-gradient(180deg, #1a0000 0%, #ff3300 70%, #ffcc00 100%)" },
+            { file: "moonlit_clouds.glsl", name: "🌕 Księżycowa Noc", bg: "linear-gradient(135deg, #030814, #121f3d, #e8f0fe)" },
+            { file: "sunbeams_dust.glsl", name: "☀️ Snopy Słońca", bg: "linear-gradient(135deg, #2b1800, #b37d14, #fceabb)" },
+            { file: "ocean_caustics.glsl", name: "🌊 Woda w Basenie", bg: "linear-gradient(135deg, #0052d4, #4364f7, #6fb1fc)" },
+            { file: "cyber_aurora.glsl", name: "🌌 Zorza Polarna", bg: "linear-gradient(135deg, #0b1a30, #00d2ff, #7928ca)" },
+            { file: "hyperspace_warp.glsl", name: "✨ Tunel Gwiazd", bg: "radial-gradient(circle, #00ff88, #002244, #000)" },
+            { file: "neon_lava.glsl", name: "🔥 Płynna Plazma", bg: "linear-gradient(135deg, #ff007f, #ffaa00, #33001b)" },
+            { file: "synthwave_grid.glsl", name: "📐 Siatka Retro", bg: "linear-gradient(180deg, #12002b 0%, #ff007f 60%, #00ffff 100%)" },
+            { file: "techno_pulse.glsl", name: "🪩 Rytm Techno", bg: "radial-gradient(circle, #ff0055, #110033, #050510)" },
+            { file: "electric_arc.glsl", name: "⚡ Łuk Elektryczny", bg: "linear-gradient(135deg, #051429, #00d2ff, #ffffff)" },
+            { file: "zen_blossom.glsl", name: "🌸 Mandala Zen", bg: "radial-gradient(circle, #ff758c, #ff7eb3, #1e0826)" }
         ];
 
         const listContainer = document.getElementById("shaderList");
         shaders.forEach((s, idx) => {
             const card = document.createElement("div");
-            card.className = "shader-card" + (idx === 0 ? " active" : "");
-            card.innerHTML = `<div style="width:100%; height:75px; background:${s.bg}; display:flex; align-items:center; justify-content:center; font-size:1.6rem; text-shadow:0 0 10px rgba(0,0,0,0.8);">${s.name.split(' ')[0]}</div><span>${s.name.split(' ').slice(1).join(' ')}</span>`;
+            card.className = "visual-tile" + (idx === 0 ? " active" : "");
+            card.innerHTML = `<div class="preview-box" style="background:${s.bg};">${s.name.split(' ')[0]}</div><span class="tile-label">${s.name.split(' ').slice(1).join(' ')}</span>`;
             card.onclick = () => {
-                document.querySelectorAll(".shader-card").forEach(c => c.classList.remove("active"));
+                document.querySelectorAll("#shaderList .visual-tile").forEach(c => c.classList.remove("active"));
                 card.classList.add("active");
                 if (activeWindowIndex === -1) {
-                    // Shader na globalne tło
                     send({ type: "shader", file: s.file });
                 } else if (windows[activeWindowIndex]) {
-                    // SHADER DLA DANEGO KONKRETNEGO OKNA!
                     windows[activeWindowIndex].shaderFile = s.file;
                     windows[activeWindowIndex].mediaUrl = null;
                     updateWindowTabs();
@@ -803,7 +1158,7 @@
             listContainer.appendChild(card);
         });
 
-        // WINDOW MASK & TARGET SYSTEM
+        // Window Mask Editor
         const mCanvas = document.getElementById("maskCanvas");
         const mCtx = mCanvas.getContext("2d");
         let windows = [];
@@ -811,15 +1166,13 @@
 
         function updateWindowTabs() {
             const tabs = document.getElementById("windowTabs");
-            tabs.innerHTML = `<button class="window-tab ${activeWindowIndex === -1 ? 'active' : ''}" onclick="selectTargetWindow(-1)">🌍 ALL / FULL ROOM</button>`;
+            tabs.innerHTML = `<button class="win-tab-pill ${activeWindowIndex === -1 ? 'active' : ''}" onclick="selectTargetWindow(-1)">🌍 Cały Pokój</button>`;
             windows.forEach((w, i) => {
                 let badge = "";
                 if (w.shaderFile) badge = "✨";
                 else if (w.mediaUrl) badge = "🎬";
-                tabs.innerHTML += `<button class="window-tab ${activeWindowIndex === i ? 'active' : ''}" onclick="selectTargetWindow(${i})">🪟 WINDOW #${i + 1} ${badge}</button>`;
+                tabs.innerHTML += `<button class="win-tab-pill ${activeWindowIndex === i ? 'active' : ''}" onclick="selectTargetWindow(${i})">🪟 Okno #${i + 1} ${badge}</button>`;
             });
-            const title = activeWindowIndex === -1 ? "🌍 ALL / FULL ROOM" : `🪟 WINDOW #${activeWindowIndex + 1}`;
-            document.getElementById("gifSectionTitle").innerText = "🐱 ASSIGN GIF TO: " + title;
         }
 
         function selectTargetWindow(idx) {
@@ -827,7 +1180,6 @@
             updateWindowTabs();
             drawMaskCanvas();
 
-            // Zaktualizuj suwaki i przyciski do wartości wybranego okna
             if (activeWindowIndex >= 0 && windows[activeWindowIndex]) {
                 const w = windows[activeWindowIndex];
                 document.getElementById("slider_win_delay").value = w.delay || 0;
@@ -843,12 +1195,11 @@
                 const mType = w.mullionType || 'none';
                 ['none', 'vert', 'horiz', 'cross'].forEach(t => {
                     const btn = document.getElementById('mull_' + t);
-                    if (btn) btn.style.borderColor = 'rgba(255,255,255,0.1)';
+                    if (btn) btn.style.borderColor = 'var(--card-border)';
                 });
                 const activeMullBtn = document.getElementById('mull_' + (mType === 'vertical' ? 'vert' : mType === 'horizontal' ? 'horiz' : mType));
-                if (activeMullBtn) activeMullBtn.style.borderColor = '#00ff88';
+                if (activeMullBtn) activeMullBtn.style.borderColor = 'var(--accent-green)';
 
-                // Transformacje gifa
                 document.getElementById("slider_gif_scale").value = w.scale || 1.0;
                 document.getElementById("val_gif_scale").innerText = Math.round((w.scale || 1.0) * 100) + "%";
                 document.getElementById("slider_gif_x").value = w.posX || 0;
@@ -859,6 +1210,7 @@
         }
 
         function resizeMaskCanvas() {
+            if (!mCanvas) return;
             mCanvas.width = mCanvas.clientWidth;
             mCanvas.height = mCanvas.clientHeight;
             drawMaskCanvas();
@@ -871,7 +1223,8 @@
             const x = 0.08 + (windows.length * 0.15) % 0.55;
             const y = 0.2;
             windows.push({
-                mediaUrl: null, // brak osobnego GIFa domyślnie
+                mediaUrl: null,
+                shaderFile: null,
                 points: [
                     { x: x, y: y },
                     { x: x + w, y: y },
@@ -879,17 +1232,18 @@
                     { x: x, y: y + h }
                 ]
             });
-            activeWindowIndex = windows.length - 1; // Przełącz od razu na nowo dodane okno
-            document.getElementById("winCount").innerText = "Windows: " + windows.length;
+            activeWindowIndex = windows.length - 1;
+            document.getElementById("winCount").innerText = "Okna: " + windows.length;
             updateWindowTabs();
             drawMaskCanvas();
             send({ type: "masks", windows: windows });
         }
 
         function resetMasks() {
+            if (!confirm("Czy na pewno chcesz usunąć wszystkie okna?")) return;
             windows = [];
             activeWindowIndex = -1;
-            document.getElementById("winCount").innerText = "Windows: 0";
+            document.getElementById("winCount").innerText = "Okna: 0";
             updateWindowTabs();
             drawMaskCanvas();
             send({ type: "masks", windows: windows });
@@ -897,16 +1251,16 @@
 
         function drawMaskCanvas() {
             mCtx.clearRect(0, 0, mCanvas.width, mCanvas.height);
-            mCtx.fillStyle = "#0c0e17";
+            mCtx.fillStyle = "#090d18";
             mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
 
             if (windows.length === 0) {
-                mCtx.fillStyle = "rgba(0, 210, 255, 0.1)";
+                mCtx.fillStyle = "rgba(0, 229, 255, 0.08)";
                 mCtx.fillRect(0, 0, mCanvas.width, mCanvas.height);
-                mCtx.fillStyle = "#8b9bb4";
-                mCtx.font = "12px sans-serif";
+                mCtx.fillStyle = "#94a3b8";
+                mCtx.font = "13px -apple-system, sans-serif";
                 mCtx.textAlign = "center";
-                mCtx.fillText("No windows defined (Light fills entire room)", mCanvas.width / 2, mCanvas.height / 2);
+                mCtx.fillText("Brak okien (Kliknij '➕ Nowe Okno' u góry)", mCanvas.width / 2, mCanvas.height / 2);
                 return;
             }
 
@@ -920,9 +1274,9 @@
                     else mCtx.lineTo(px, py);
                 });
                 mCtx.closePath();
-                mCtx.fillStyle = isSelected ? "rgba(0, 255, 136, 0.35)" : "rgba(0, 210, 255, 0.2)";
+                mCtx.fillStyle = isSelected ? "rgba(16, 185, 129, 0.35)" : "rgba(0, 229, 255, 0.18)";
                 mCtx.fill();
-                mCtx.strokeStyle = isSelected ? "#00ff88" : "#00d2ff";
+                mCtx.strokeStyle = isSelected ? "#10b981" : "#00e5ff";
                 mCtx.lineWidth = isSelected ? 3 : 1.5;
                 mCtx.stroke();
 
@@ -932,14 +1286,14 @@
                 mCtx.font = "bold 13px sans-serif";
                 mCtx.textAlign = "center";
                 let winTag = win.shaderFile ? '✨' : (win.mediaUrl ? '🎬' : '');
-                mCtx.fillText(`Window #${wIdx + 1} ${winTag}`, centerX, centerY);
+                mCtx.fillText(`Okno #${wIdx + 1} ${winTag}`, centerX, centerY);
 
                 win.points.forEach((p) => {
                     const px = p.x * mCanvas.width;
                     const py = p.y * mCanvas.height;
                     mCtx.beginPath();
                     mCtx.arc(px, py, isSelected ? 10 : 7, 0, Math.PI * 2);
-                    mCtx.fillStyle = isSelected ? "#00ff88" : "#ff4b72";
+                    mCtx.fillStyle = isSelected ? "#10b981" : "#ff477e";
                     mCtx.fill();
                     mCtx.strokeStyle = "#fff";
                     mCtx.lineWidth = 2;
@@ -965,7 +1319,7 @@
                     const dx = p.x - pos.x;
                     const dy = p.y - pos.y;
                     if (Math.sqrt(dx*dx + dy*dy) < threshold) {
-                        activeWindowIndex = i; // Kliknięcie punktu automatycznie aktywuje to okno
+                        activeWindowIndex = i;
                         updateWindowTabs();
                         return p;
                     }
