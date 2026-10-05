@@ -139,6 +139,10 @@
         <!-- Warstwa Siatki Kalibracyjnej (Grid / Alignment Mode) -->
         <canvas id="gridCanvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:30; display:none;"></canvas>
 
+        <!-- Warstwa Nastrojowych Niespodzianek (Atmosphere & Surprises) -->
+        <div id="lightningOverlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:#fff; opacity:0; pointer-events:none; z-index:25; transition: opacity 0.05s ease;"></div>
+        <div id="shadowLayer" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:15; overflow:hidden;"></div>
+
         <div id="blackout"></div>
 
         <div id="pinBanner">
@@ -426,7 +430,7 @@
             windowShaderRenderers = [];
         }
 
-        // Renderowanie wielu niezależnych okien z mediami lub shaderami!
+        // Renderowanie wielu niezależnych okien z mediami, shaderami, szprosami i niezależnym FX!
         async function applyMasksAndSurfaces(windows) {
             cleanupWindowShaders();
             windowsLayer.innerHTML = "";
@@ -467,6 +471,10 @@
                     const posX = w.posX || 0;
                     const posY = w.posY || 0;
                     const fit = w.fit || "contain";
+                    const wBrightness = w.brightness !== undefined ? w.brightness : 1.0;
+                    const wSpeed = w.speed !== undefined ? w.speed : 1.0;
+                    const wHue = w.hue !== undefined ? w.hue : 0.0;
+                    const wDelay = w.delay || 0; // opóźnienie w sekundach
 
                     const surfaceDiv = document.createElement("div");
                     surfaceDiv.className = "window-surface";
@@ -480,6 +488,21 @@
                     surfaceDiv.style.display = "flex";
                     surfaceDiv.style.alignItems = "center";
                     surfaceDiv.style.justifyContent = "center";
+                    surfaceDiv.style.filter = `brightness(${wBrightness})`;
+
+                    // Obsługa opóźnienia startu okna (Stagger / Start Delay)
+                    if (wDelay > 0) {
+                        surfaceDiv.style.opacity = "0";
+                        surfaceDiv.style.transition = "opacity 0.6s ease";
+                        setTimeout(() => { surfaceDiv.style.opacity = "1"; }, wDelay * 1000);
+                    }
+
+                    // Kontener treści okna (aby na to nałożyć ew. szprosy)
+                    const contentContainer = document.createElement("div");
+                    contentContainer.style.width = "100%";
+                    contentContainer.style.height = "100%";
+                    contentContainer.style.position = "relative";
+                    surfaceDiv.appendChild(contentContainer);
 
                     if (w.shaderFile) {
                         // Indywidualny WebGL Canvas dla tego okna
@@ -488,7 +511,7 @@
                         wCanvas.height = boxH;
                         wCanvas.style.width = "100%";
                         wCanvas.style.height = "100%";
-                        surfaceDiv.appendChild(wCanvas);
+                        contentContainer.appendChild(wCanvas);
                         windowsLayer.appendChild(surfaceDiv);
 
                         const wgl = wCanvas.getContext("webgl") || wCanvas.getContext("experimental-webgl");
@@ -522,9 +545,16 @@
                                             if (ut) wgl.uniform1f(ut, t);
                                             const ur = wgl.getUniformLocation(prog, "u_resolution");
                                             if (ur) wgl.uniform2f(ur, boxW, boxH);
-                                            for (let k in uniforms) {
+                                            // Niezależne uniformy per okno
+                                            const winUniforms = {
+                                                ...uniforms,
+                                                u_timeSpeed: (uniforms.u_timeSpeed || 1.0) * wSpeed,
+                                                u_brightness: (uniforms.u_brightness || 1.0) * wBrightness,
+                                                u_hueShift: fract((uniforms.u_hueShift || 0.0) + wHue)
+                                            };
+                                            for (let k in winUniforms) {
                                                 const loc = wgl.getUniformLocation(prog, k);
-                                                if (loc) wgl.uniform1f(loc, uniforms[k]);
+                                                if (loc) wgl.uniform1f(loc, winUniforms[k]);
                                             }
                                             wgl.drawArrays(wgl.TRIANGLES, 0, 6);
                                         }
@@ -538,16 +568,124 @@
                     } else if (w.mediaUrl) {
                         const isVideo = w.mediaUrl.startsWith("data:video") || w.mediaUrl.endsWith(".mp4") || w.mediaUrl.endsWith(".webm");
                         if (isVideo) {
-                            surfaceDiv.innerHTML = `<video src="${w.mediaUrl}" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:${fit}; transform: translate(${posX}%, ${posY}%) scale(${scale}); transform-origin:center;"></video>`;
+                            contentContainer.innerHTML = `<video src="${w.mediaUrl}" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:${fit}; transform: translate(${posX}%, ${posY}%) scale(${scale}); transform-origin:center;"></video>`;
                         } else {
-                            surfaceDiv.innerHTML = `<img src="${w.mediaUrl}" style="width:100%; height:100%; object-fit:${fit}; transform: translate(${posX}%, ${posY}%) scale(${scale}); transform-origin:center;" />`;
+                            contentContainer.innerHTML = `<img src="${w.mediaUrl}" style="width:100%; height:100%; object-fit:${fit}; transform: translate(${posX}%, ${posY}%) scale(${scale}); transform-origin:center;" />`;
                         }
                         windowsLayer.appendChild(surfaceDiv);
+                    }
+
+                    // Obsługa szprosów i ram okiennych (Mullions & Dividers)
+                    const mType = w.mullionType || "none"; // 'none', 'vertical', 'horizontal', 'cross'
+                    const mThick = w.mullionThick || 5; // % grubości
+                    if (mType !== "none") {
+                        const mullionOverlay = document.createElement("div");
+                        mullionOverlay.style.position = "absolute";
+                        mullionOverlay.style.top = "0";
+                        mullionOverlay.style.left = "0";
+                        mullionOverlay.style.width = "100%";
+                        mullionOverlay.style.height = "100%";
+                        mullionOverlay.style.pointerEvents = "none";
+
+                        if (mType === "vertical" || mType === "cross") {
+                            const vBar = document.createElement("div");
+                            vBar.style.position = "absolute";
+                            vBar.style.top = "0";
+                            vBar.style.left = `calc(50% - ${mThick / 2}%)`;
+                            vBar.style.width = `${mThick}%`;
+                            vBar.style.height = "100%";
+                            vBar.style.background = "#000000";
+                            mullionOverlay.appendChild(vBar);
+                        }
+                        if (mType === "horizontal" || mType === "cross") {
+                            const hBar = document.createElement("div");
+                            hBar.style.position = "absolute";
+                            hBar.style.left = "0";
+                            hBar.style.top = `calc(50% - ${mThick / 2}%)`;
+                            hBar.style.height = `${mThick}%`;
+                            hBar.style.width = "100%";
+                            hBar.style.background = "#000000";
+                            mullionOverlay.appendChild(hBar);
+                        }
+                        surfaceDiv.appendChild(mullionOverlay);
                     }
                 }
             }
             maskHoles.innerHTML = holesSvg;
             if (gridActive) drawCalibrationGrid();
+        }
+
+        // ATMOSPHERE EFFECTS (Błyskawice, Cień kota, Spadająca gwiazda)
+        const lightningOverlay = document.getElementById("lightningOverlay");
+        const shadowLayer = document.getElementById("shadowLayer");
+
+        function triggerLightning() {
+            if (!lightningOverlay) return;
+            // Podwójny realistyczny błysk pioruna
+            lightningOverlay.style.opacity = "0.95";
+            setTimeout(() => {
+                lightningOverlay.style.opacity = "0.1";
+                setTimeout(() => {
+                    lightningOverlay.style.opacity = "0.85";
+                    setTimeout(() => {
+                        lightningOverlay.style.opacity = "0";
+                    }, 120);
+                }, 60);
+            }, 80);
+        }
+
+        function triggerShadow(type) {
+            if (!shadowLayer) return;
+            const el = document.createElement("div");
+            el.style.position = "absolute";
+            el.style.bottom = "10%";
+            el.style.left = "-150px";
+            el.style.width = "120px";
+            el.style.height = "100px";
+            el.style.transition = "transform 6s cubic-bezier(0.4, 0, 0.2, 1)";
+            el.style.opacity = "0.75";
+            el.style.pointerEvents = "none";
+
+            // Kształt kota w SVG
+            el.innerHTML = `
+                <svg viewBox="0 0 100 80" width="100%" height="100%">
+                    <path d="M 20 60 Q 30 35 50 40 Q 65 30 75 45 Q 85 55 80 70 Q 50 75 20 60 Z" fill="#000" />
+                    <!-- Uszy kota -->
+                    <polygon points="65,35 70,20 75,32" fill="#000" />
+                    <polygon points="75,33 80,18 84,38" fill="#000" />
+                    <!-- Ogon -->
+                    <path d="M 20 60 Q 10 40 5 45 Q 8 65 18 63" stroke="#000" stroke-width="6" fill="none" stroke-linecap="round" />
+                </svg>
+            `;
+            shadowLayer.appendChild(el);
+
+            // Animacja przejścia przez okno
+            requestAnimationFrame(() => {
+                el.style.transform = `translateX(${window.innerWidth + 250}px)`;
+            });
+            setTimeout(() => { el.remove(); }, 6500);
+        }
+
+        function triggerShootingStar() {
+            if (!shadowLayer) return;
+            const star = document.createElement("div");
+            star.style.position = "absolute";
+            star.style.top = Math.random() * 40 + "%";
+            star.style.left = Math.random() * 60 + "%";
+            star.style.width = "120px";
+            star.style.height = "2px";
+            star.style.background = "linear-gradient(90deg, rgba(255,255,255,0.9), transparent)";
+            star.style.transform = "rotate(-35deg)";
+            star.style.transition = "all 0.6s ease-out";
+            star.style.opacity = "1";
+            star.style.boxShadow = "0 0 10px #fff";
+            shadowLayer.appendChild(star);
+
+            requestAnimationFrame(() => {
+                star.style.transform = "translate(300px, 200px) rotate(-35deg)";
+                star.style.opacity = "0";
+            });
+            setTimeout(() => { star.remove(); }, 700);
         }
 
         // Pełna konfiguracja ICE (STUN + TURN) do łączenia urządzeń w RÓŻNYCH SIECIACH (LTE/Wi-Fi/NAT)
@@ -635,6 +773,10 @@
                     globalGif.style.transform = `scale(${data.scale})`;
                 } else if (data.type === "gif_fit") {
                     globalGif.style.objectFit = data.fit;
+                } else if (data.type === "atmosphere") {
+                    if (data.effect === "lightning") triggerLightning();
+                    else if (data.effect === "shadow") triggerShadow(data.subType);
+                    else if (data.effect === "star") triggerShootingStar();
                 }
             });
         });

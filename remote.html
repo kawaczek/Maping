@@ -211,6 +211,41 @@
             </div>
         </div>
 
+        <!-- NOWOŚĆ: PODZIAŁ SZPROSÓW / RAMY OKIENNE (Mullions & Window Dividers) -->
+        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid rgba(0,255,136,0.2);">
+            <div style="font-weight:bold; font-size:0.85rem; color:#00ff88; margin-bottom:8px;">🪟 Window Frames & Mullions (Szprosy)</div>
+            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; margin-bottom:10px;">
+                <button style="padding:6px 4px; font-size:0.75rem;" id="mull_none" onclick="setWindowMullion('none')">Single (Brak)</button>
+                <button style="padding:6px 4px; font-size:0.75rem;" id="mull_vert" onclick="setWindowMullion('vertical')">Pionowy ◫</button>
+                <button style="padding:6px 4px; font-size:0.75rem;" id="mull_horiz" onclick="setWindowMullion('horizontal')">Poziomy ▤</button>
+                <button style="padding:6px 4px; font-size:0.75rem;" id="mull_cross" onclick="setWindowMullion('cross')">Krzyżak ⊞</button>
+            </div>
+            <div class="slider-group" style="margin-bottom:0;">
+                <div class="slider-label"><span>Rama / Grubość szprosu</span><span id="val_mull_thick">5%</span></div>
+                <input type="range" id="slider_mull_thick" min="1" max="15" step="1" value="5" oninput="updateMullionThick(this.value)">
+            </div>
+        </div>
+
+        <!-- NOWOŚĆ: NIEZALEŻNY START I FX DLA AKTYWNEGO OKNA (Per-Window FX & Stagger Delay) -->
+        <div style="background: rgba(255,255,255,0.03); border-radius: 12px; padding: 12px; margin-bottom: 12px; border: 1px solid rgba(255,75,114,0.2);">
+            <div style="font-weight:bold; font-size:0.85rem; color:var(--accent); margin-bottom:8px;">⏱️ Independent Window FX & Start Delay</div>
+            
+            <div class="slider-group" style="margin-bottom:8px;">
+                <div class="slider-label"><span>⏳ Start Delay (Stagger)</span><span id="val_win_delay">0s</span></div>
+                <input type="range" id="slider_win_delay" min="0" max="10" step="1" value="0" oninput="updateWinParam('delay', this.value, 'val_win_delay', 's')">
+            </div>
+
+            <div class="slider-group" style="margin-bottom:8px;">
+                <div class="slider-label"><span>⚡ Window Speed</span><span id="val_win_speed">1.0x</span></div>
+                <input type="range" id="slider_win_speed" min="0.2" max="3.0" step="0.1" value="1.0" oninput="updateWinParam('speed', this.value, 'val_win_speed', 'x')">
+            </div>
+
+            <div class="slider-group" style="margin-bottom:0;">
+                <div class="slider-label"><span>💡 Window Brightness</span><span id="val_win_bright">100%</span></div>
+                <input type="range" id="slider_win_bright" min="0.1" max="1.5" step="0.05" value="1.0" oninput="updateWinParam('brightness', this.value, 'val_win_bright', '%')">
+            </div>
+        </div>
+
         <!-- Bezpośrednia wyszukiwarka / wklejanie dowolnego GIFa z sieci -->
         <div style="display:flex; gap:8px; margin-bottom:12px;">
             <input type="text" id="customGifInput" placeholder="Paste direct GIF/image URL..." style="flex:1; background:var(--card); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:10px 12px; color:#fff; font-size:0.85rem; outline:none;" onkeydown="if(event.key==='Enter') applyCustomGif()">
@@ -225,6 +260,20 @@
             <button style="padding:6px 12px; font-size:0.75rem;" onclick="filterGifs('nature')">🔥 Fire & Space</button>
         </div>
         <div class="shaders-grid" id="gifGrid"></div>
+    </div>
+
+    <!-- NOWOŚĆ: ATMOSPHERE & SURPRISE FX -->
+    <div class="section">
+        <div class="section-title">⚡ ATMOSPHERE & SURPRISE FX</div>
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:10px;">
+            <button style="background:rgba(255,255,255,0.08); border-color:#fff; color:#fff; font-size:0.8rem; padding:10px 6px;" onclick="triggerAtmosphere('lightning')">⚡ LIGHTNING</button>
+            <button style="background:rgba(0,210,255,0.08); border-color:#00d2ff; color:#00d2ff; font-size:0.8rem; padding:10px 6px;" onclick="triggerAtmosphere('shadow')">🐈 CAT PASS</button>
+            <button style="background:rgba(255,75,114,0.08); border-color:#ff4b72; color:#ff4b72; font-size:0.8rem; padding:10px 6px;" onclick="triggerAtmosphere('star')">🌠 SHOOT STAR</button>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; background:var(--card); padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.08);">
+            <span style="font-size:0.85rem; color:#fff;">🎲 Auto-Surprise (Random Loop)</span>
+            <button id="autoAtmosphereBtn" style="padding:6px 12px; font-size:0.8rem;" onclick="toggleAutoAtmosphere()">DISABLED</button>
+        </div>
     </div>
 
     <!-- EFFECT CONTROLS -->
@@ -541,6 +590,66 @@
             }
         }
 
+        // OBSŁUGA SZPROSÓW / RAM OKIENNYCH
+        function setWindowMullion(type) {
+            ['none', 'vert', 'horiz', 'cross'].forEach(t => {
+                const btn = document.getElementById('mull_' + t);
+                if (btn) btn.style.borderColor = 'rgba(255,255,255,0.1)';
+            });
+            const activeBtn = document.getElementById('mull_' + (type === 'vertical' ? 'vert' : type === 'horizontal' ? 'horiz' : type));
+            if (activeBtn) activeBtn.style.borderColor = '#00ff88';
+
+            if (windows[activeWindowIndex]) {
+                windows[activeWindowIndex].mullionType = type;
+                send({ type: "masks", windows: windows });
+            }
+        }
+
+        function updateMullionThick(val) {
+            document.getElementById("val_mull_thick").innerText = val + "%";
+            if (windows[activeWindowIndex]) {
+                windows[activeWindowIndex].mullionThick = parseFloat(val);
+                send({ type: "masks", windows: windows });
+            }
+        }
+
+        // OBSŁUGA NIEZALEŻNYCH PARAMETRÓW OKNA (FX & Stagger Delay)
+        function updateWinParam(param, val, labelId, unit) {
+            document.getElementById(labelId).innerText = val + unit;
+            const num = parseFloat(val);
+            if (windows[activeWindowIndex]) {
+                windows[activeWindowIndex][param] = num;
+                send({ type: "masks", windows: windows });
+            }
+        }
+
+        // ATMOSPHERE & SURPRISE FX
+        function triggerAtmosphere(effect) {
+            send({ type: "atmosphere", effect: effect });
+        }
+
+        let autoAtmosphereTimer = null;
+        function toggleAutoAtmosphere() {
+            const btn = document.getElementById("autoAtmosphereBtn");
+            if (autoAtmosphereTimer) {
+                clearInterval(autoAtmosphereTimer);
+                autoAtmosphereTimer = null;
+                btn.innerText = "DISABLED";
+                btn.style.background = "var(--card)";
+                btn.style.color = "var(--text)";
+            } else {
+                btn.innerText = "ACTIVE ⚡";
+                btn.style.background = "#ff4b72";
+                btn.style.color = "#fff";
+                // Losowo co 20 - 45 sekund wyzwala losowy efekt za oknem
+                autoAtmosphereTimer = setInterval(() => {
+                    const fxList = ["lightning", "shadow", "star"];
+                    const chosen = fxList[Math.floor(Math.random() * fxList.length)];
+                    triggerAtmosphere(chosen);
+                }, 25000);
+            }
+        }
+
         let isGrid = false;
         function toggleGrid() {
             isGrid = !isGrid;
@@ -721,6 +830,36 @@
             activeWindowIndex = idx;
             updateWindowTabs();
             drawMaskCanvas();
+
+            // Zaktualizuj suwaki i przyciski do wartości wybranego okna
+            if (activeWindowIndex >= 0 && windows[activeWindowIndex]) {
+                const w = windows[activeWindowIndex];
+                document.getElementById("slider_win_delay").value = w.delay || 0;
+                document.getElementById("val_win_delay").innerText = (w.delay || 0) + "s";
+                document.getElementById("slider_win_speed").value = w.speed !== undefined ? w.speed : 1.0;
+                document.getElementById("val_win_speed").innerText = (w.speed !== undefined ? w.speed : 1.0) + "x";
+                document.getElementById("slider_win_bright").value = w.brightness !== undefined ? w.brightness : 1.0;
+                document.getElementById("val_win_bright").innerText = Math.round((w.brightness !== undefined ? w.brightness : 1.0) * 100) + "%";
+
+                document.getElementById("slider_mull_thick").value = w.mullionThick || 5;
+                document.getElementById("val_mull_thick").innerText = (w.mullionThick || 5) + "%";
+
+                const mType = w.mullionType || 'none';
+                ['none', 'vert', 'horiz', 'cross'].forEach(t => {
+                    const btn = document.getElementById('mull_' + t);
+                    if (btn) btn.style.borderColor = 'rgba(255,255,255,0.1)';
+                });
+                const activeMullBtn = document.getElementById('mull_' + (mType === 'vertical' ? 'vert' : mType === 'horizontal' ? 'horiz' : mType));
+                if (activeMullBtn) activeMullBtn.style.borderColor = '#00ff88';
+
+                // Transformacje gifa
+                document.getElementById("slider_gif_scale").value = w.scale || 1.0;
+                document.getElementById("val_gif_scale").innerText = Math.round((w.scale || 1.0) * 100) + "%";
+                document.getElementById("slider_gif_x").value = w.posX || 0;
+                document.getElementById("val_gif_x").innerText = (w.posX || 0) + "%";
+                document.getElementById("slider_gif_y").value = w.posY || 0;
+                document.getElementById("val_gif_y").innerText = (w.posY || 0) + "%";
+            }
         }
 
         function resizeMaskCanvas() {
