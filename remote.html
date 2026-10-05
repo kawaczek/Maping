@@ -296,6 +296,32 @@
                 document.querySelector(".btn-connect").innerText = "CONNECTED!";
                 pinModal.style.display = "none";
                 localStorage.setItem("last_maping_pin", pin);
+
+                // Jeśli pilot ma zapisane okna lokalnie, również je zachowaj
+                const localWindows = localStorage.getItem("maping_windows_" + pin);
+                if (localWindows) {
+                    try {
+                        windows = JSON.parse(localWindows);
+                        updateWindowTabs();
+                        drawMaskCanvas();
+                    } catch(e){}
+                }
+            });
+
+            // Odbieraj aktualny stan z projektora przy ponownym wejściu (wstecz w przeglądarce)
+            conn.on("data", (data) => {
+                if (data.type === "sync_state" && data.state) {
+                    if (data.state.windows && data.state.windows.length > 0) {
+                        windows = data.state.windows;
+                        updateWindowTabs();
+                        drawMaskCanvas();
+                    }
+                    if (data.state.uniforms) {
+                        if (data.state.uniforms.u_timeSpeed) {
+                            document.getElementById("val_speed").innerText = data.state.uniforms.u_timeSpeed;
+                        }
+                    }
+                }
             });
 
             conn.on("close", () => {
@@ -318,6 +344,10 @@
 
         function send(data) {
             if (conn && conn.open) conn.send(data);
+            if (data.type === "masks" && targetPeerId) {
+                const pin = targetPeerId.replace("hy320-room-", "");
+                localStorage.setItem("maping_windows_" + pin, JSON.stringify(data.windows));
+            }
         }
 
         function toggleBlackout() {

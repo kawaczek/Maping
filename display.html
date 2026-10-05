@@ -385,8 +385,27 @@
                 pinBanner.style.pointerEvents = "none";
             }, 3000);
 
+            // Zapisujemy aktywny stan w pamięci projektora
+            let activeState = {
+                windows: [],
+                uniforms: uniforms,
+                isBlackout: false,
+                currentType: "shader",
+                currentFile: "plasma_glow_frag.glsl"
+            };
+
+            // Po sparowaniu z pilotem natychmiast wyślij mu aktualny stan!
+            conn.on("open", () => {
+                conn.send({
+                    type: "sync_state",
+                    state: activeState
+                });
+            });
+
             conn.on("data", (data) => {
                 if (data.type === "shader") {
+                    activeState.currentType = "shader";
+                    activeState.currentFile = data.file;
                     ytPlayer.style.display = "none";
                     globalGif.style.display = "none";
                     canvas.style.display = "block";
@@ -395,16 +414,23 @@
                         .then(code => loadProgram(code));
                 } else if (data.type === "uniforms") {
                     uniforms = { ...uniforms, ...data.values };
+                    activeState.uniforms = uniforms;
                 } else if (data.type === "blackout") {
+                    activeState.isBlackout = data.state;
                     blackout.style.display = data.state ? "block" : "none";
                 } else if (data.type === "masks") {
+                    activeState.windows = data.windows;
                     applyMasksAndSurfaces(data.windows);
                 } else if (data.type === "youtube") {
+                    activeState.currentType = "youtube";
+                    activeState.ytId = data.id;
                     canvas.style.display = "none";
                     globalGif.style.display = "none";
                     ytPlayer.style.display = "block";
                     ytPlayer.src = "https://www.youtube-nocookie.com/embed/" + data.id + "?autoplay=1&controls=0&loop=1&playlist=" + data.id;
                 } else if (data.type === "gif") {
+                    activeState.currentType = "gif";
+                    activeState.gifUrl = data.url;
                     canvas.style.display = "none";
                     ytPlayer.style.display = "none";
                     globalGif.style.display = "block";
