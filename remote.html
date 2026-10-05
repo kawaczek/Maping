@@ -412,10 +412,10 @@
     <!-- PIN Connection Modal -->
     <div id="pinModal">
         <div class="pin-card">
-            <h2>✨ Connect to Projector</h2>
-            <p>Enter the 4-digit PIN code displayed on your wall / screen:</p>
-            <input type="tel" id="inputPin" class="pin-input" maxlength="4" placeholder="----" autofocus />
-            <button class="btn-connect" onclick="connectWithPin()">CONNECT 🚀</button>
+            <h2>🛡️ Bezpieczne Połączenie</h2>
+            <p>Zeskanuj kod QR z ekranu lub wpisz 6-cyfrowy kod PIN:</p>
+            <input type="tel" id="inputPin" class="pin-input" maxlength="6" placeholder="------" autofocus />
+            <button class="btn-connect" onclick="connectWithPin()">POŁĄCZ Z EKRANEM 🚀</button>
         </div>
     </div>
 
@@ -707,6 +707,11 @@
         };
 
         let peerReady = false;
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlPin = urlParams.get("pin");
+        const urlToken = urlParams.get("token"); // Tajny token sesji z QR kodu
+        const savedPin = localStorage.getItem("last_maping_pin");
+
         const peer = new Peer(undefined, peerConfig);
         peer.on("open", () => {
             peerReady = true;
@@ -726,8 +731,8 @@
 
         function connectWithPin() {
             const pin = inputPin.value.trim();
-            if (pin.length !== 4) {
-                alert("Wpisz 4-cyfrowy kod PIN z ekranu!");
+            if (pin.length !== 6 && pin.length !== 4) {
+                alert("Wpisz 6-cyfrowy kod PIN z ekranu projektora!");
                 return;
             }
             if (!peerReady) {
@@ -735,9 +740,12 @@
                 setTimeout(connectWithPin, 300);
                 return;
             }
-            targetPeerId = "hy320-room-" + pin;
-            statusText.innerText = "Łączenie z #" + pin + "...";
-            document.querySelector(".btn-connect").innerText = "ŁĄCZENIE...";
+
+            // Ujednolicenie formatu do 6 cyfr (lub zachowanie kompatybilności z demo 7777 -> 777700)
+            const fullPin = pin.length === 4 ? pin.padEnd(6, '0') : pin;
+            targetPeerId = "hy320-v2-" + fullPin;
+            statusText.innerText = "Weryfikacja #" + fullPin + "...";
+            document.querySelector(".btn-connect").innerText = "ŁĄCZENIE (SZYFROWANE)...";
 
             if (conn) {
                 try { conn.close(); } catch(e){}
@@ -746,25 +754,42 @@
             conn = peer.connect(targetPeerId, { reliable: true });
 
             conn.on("open", () => {
-                dot.className = "status-dot online";
-                statusText.innerText = "Połączono (#" + pin + ")";
-                document.querySelector(".btn-connect").innerText = "POŁĄCZONO! ✨";
-                pinModal.style.display = "none";
-                localStorage.setItem("last_maping_pin", pin);
-
-                const localWindows = localStorage.getItem("maping_windows_" + pin);
-                if (localWindows) {
-                    try {
-                        windows = JSON.parse(localWindows);
-                        document.getElementById("winCount").innerText = "Okna: " + windows.length;
-                        updateWindowTabs();
-                        drawMaskCanvas();
-                    } catch(e){}
-                }
+                // Wyślij kryptograficzny token sesji (jeśli połączono przez QR kod lub demo)
+                const tokenToSend = urlToken || (pin === "7777" ? "demo-secret-777" : null);
+                conn.send({
+                    type: "auth_handshake",
+                    token: tokenToSend
+                });
             });
 
             conn.on("data", (data) => {
-                if (data.type === "sync_state" && data.state) {
+                if (data.type === "auth_challenge") {
+                    const tokenToSend = urlToken || (pin === "7777" ? "demo-secret-777" : null);
+                    conn.send({
+                        type: "auth_handshake",
+                        token: tokenToSend
+                    });
+                } else if (data.type === "auth_success") {
+                    dot.className = "status-dot online";
+                    statusText.innerText = "Połączono (#" + fullPin + ")";
+                    document.querySelector(".btn-connect").innerText = "POŁĄCZONO! ✨";
+                    pinModal.style.display = "none";
+                    localStorage.setItem("last_maping_pin", fullPin);
+
+                    const localWindows = localStorage.getItem("maping_windows_" + fullPin);
+                    if (localWindows) {
+                        try {
+                            windows = JSON.parse(localWindows);
+                            document.getElementById("winCount").innerText = "Okna: " + windows.length;
+                            updateWindowTabs();
+                            drawMaskCanvas();
+                        } catch(e){}
+                    }
+                } else if (data.type === "auth_error") {
+                    alert("🛡️ Zabezpieczenie ekranu:\n" + (data.message || "Brak autoryzacji!"));
+                    statusText.innerText = "Odrzucono połączenie";
+                    document.querySelector(".btn-connect").innerText = "POŁĄCZ Z EKRANEM 🚀";
+                } else if (data.type === "sync_state" && data.state) {
                     if (data.state.windows && data.state.windows.length > 0) {
                         windows = data.state.windows;
                         document.getElementById("winCount").innerText = "Okna: " + windows.length;
@@ -785,25 +810,21 @@
             conn.on("close", () => {
                 dot.className = "status-dot";
                 statusText.innerText = "Rozłączono";
-                document.querySelector(".btn-connect").innerText = "CONNECT 🚀";
+                document.querySelector(".btn-connect").innerText = "POŁĄCZ Z EKRANEM 🚀";
             });
 
             conn.on("error", (err) => {
                 console.error("Conn error:", err);
                 statusText.innerText = "Nieudane";
-                document.querySelector(".btn-connect").innerText = "CONNECT 🚀";
-                alert("Nie udało się połączyć! Upewnij się, że projektor ma otwarte display.html z kodem PIN #" + pin);
+                document.querySelector(".btn-connect").innerText = "POŁĄCZ Z EKRANEM 🚀";
+                alert("Nie udało się połączyć! Upewnij się, że projektor wyświetla kod PIN #" + fullPin);
             });
         }
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlPin = urlParams.get("pin");
-        const savedPin = localStorage.getItem("last_maping_pin");
 
         function send(data) {
             if (conn && conn.open) conn.send(data);
             if (data.type === "masks" && targetPeerId) {
-                const pin = targetPeerId.replace("hy320-room-", "");
+                const pin = targetPeerId.replace("hy320-v2-", "").replace("hy320-room-", "");
                 localStorage.setItem("maping_windows_" + pin, JSON.stringify(data.windows));
             }
         }

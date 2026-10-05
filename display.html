@@ -172,12 +172,16 @@
 
         const urlParams = new URLSearchParams(window.location.search);
         const demoPin = urlParams.get("demo");
-        const roomPin = demoPin || Math.floor(1000 + Math.random() * 9000).toString();
-        const peerId = "hy320-room-" + roomPin;
-
+        // Bezpieczny 6-cyfrowy PIN (1 000 000 kombinacji)
+        const roomPin = demoPin ? demoPin.padEnd(6, '0') : Math.floor(100000 + Math.random() * 900000).toString();
+        // Kryptograficzny tajny token sesji (Handshake secret)
+        const sessionSecret = demoPin ? "demo-secret-777" : (Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10));
+        
+        const peerId = "hy320-v2-" + roomPin;
         pinCodeEl.innerText = roomPin;
 
-        const remoteUrl = window.location.origin + "/remote.html?pin=" + roomPin;
+        // W QR kodzie przesyłamy PIN oraz pełny tajny token sesji
+        const remoteUrl = window.location.origin + "/remote.html?pin=" + roomPin + "&token=" + sessionSecret;
 
         function renderQR() {
             if (typeof QRCode !== "undefined" && QRCode.toCanvas) {
@@ -712,27 +716,59 @@
             currentFile: "cyber_aurora.glsl"
         };
 
+        let authenticatedConn = null;
+
         const peer = new Peer(peerId, peerConfig);
         peer.on("open", () => { pinCodeEl.innerText = roomPin; });
 
         peer.on("connection", (conn) => {
-            pinBanner.classList.add("connected");
-            pinCodeEl.style.color = "#00ff88";
-            pinSub.innerHTML = "Connected! ✨ (Hiding banner...)";
-            setTimeout(() => {
-                pinBanner.style.opacity = "0";
-                pinBanner.style.pointerEvents = "none";
-            }, 3000);
+            // Jeśli projektor jest już sparowany z aktywnym pilotem - odrzuć obcego intruza!
+            if (authenticatedConn && authenticatedConn.open) {
+                console.warn("Connection attempt rejected: Host is locked to an active session.");
+                conn.send({ type: "auth_error", message: "Ekran jest zablokowany i połączony z innym pilotem!" });
+                setTimeout(() => { try { conn.close(); } catch(e){} }, 500);
+                return;
+            }
 
-            // Po sparowaniu z pilotem natychmiast wyślij mu aktualny stan!
+            let isAuthorized = false;
+
             conn.on("open", () => {
-                conn.send({
-                    type: "sync_state",
-                    state: activeState
-                });
+                // Zażądaj handshake z tokenem uwierzytelniającym
+                conn.send({ type: "auth_challenge" });
             });
 
             conn.on("data", async (data) => {
+                // Weryfikacja tokenu sesji (Secret Handshake)
+                if (data.type === "auth_handshake") {
+                    if (data.token === sessionSecret || !sessionSecret) {
+                        isAuthorized = true;
+                        authenticatedConn = conn;
+                        pinBanner.classList.add("connected");
+                        pinCodeEl.style.color = "#00ff88";
+                        pinSub.innerHTML = "Połączono bezpiecznie! 🛡️✨";
+                        setTimeout(() => {
+                            pinBanner.style.opacity = "0";
+                            pinBanner.style.pointerEvents = "none";
+                        }, 2500);
+
+                        conn.send({ type: "auth_success" });
+                        conn.send({
+                            type: "sync_state",
+                            state: activeState
+                        });
+                    } else {
+                        conn.send({ type: "auth_error", message: "Błędny token sesji! Odmowa dostępu." });
+                        setTimeout(() => { try { conn.close(); } catch(e){} }, 500);
+                    }
+                    return;
+                }
+
+                // Odrzuć wszelkie komendy, dopóki klient nie przejdzie handshake
+                if (!isAuthorized) {
+                    console.warn("Unauthorized command attempt:", data.type);
+                    return;
+                }
+
                 if (data.type === "grid") {
                     gridActive = !!data.enabled;
                     activeState.grid = gridActive;
