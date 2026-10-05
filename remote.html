@@ -128,9 +128,26 @@
     </header>
 
     <div class="section">
-        <div class="quick-row">
+        <div class="quick-row" style="grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
             <button class="btn-blackout" id="blackoutBtn" onclick="toggleBlackout()">🌑 BLACKOUT</button>
-            <button class="btn-add" onclick="addWindow()">➕ ADD WINDOW</button>
+            <button class="btn-grid" id="gridBtn" style="background:#15222e; border-color:#00d2ff; color:#00d2ff;" onclick="toggleGrid()">📐 GRID / ALIGN</button>
+            <button class="btn-add" onclick="addWindow()">➕ ADD WIN</button>
+        </div>
+    </div>
+
+    <!-- ROOM PRESETS & SCENES -->
+    <div class="section" style="background: rgba(255,255,255,0.02);">
+        <div class="section-title">💾 ROOM PRESETS & SCENES</div>
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <select id="presetSelect" style="flex: 1; background: var(--card); border: 1px solid rgba(255,255,255,0.15); color: #fff; padding: 10px; border-radius: 10px; font-size: 0.85rem; outline: none;">
+                <option value="">-- Select Saved Preset --</option>
+            </select>
+            <button style="padding: 10px 14px; font-size: 0.85rem; background: rgba(0,255,136,0.15); border-color: #00ff88; color: #00ff88;" onclick="loadPreset()">LOAD</button>
+            <button style="padding: 10px 14px; font-size: 0.85rem; background: rgba(255,75,114,0.15); border-color: #ff4b72; color: #ff4b72;" onclick="deletePreset()">DEL</button>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <input type="text" id="presetNameInput" placeholder="Preset name (e.g. Living Room 2 Win)..." style="flex: 1; background: var(--card); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 0.85rem; outline: none;">
+            <button style="padding: 10px 16px; font-size: 0.85rem; background: rgba(0,210,255,0.15); border-color: #00d2ff; color: #00d2ff;" onclick="savePreset()">💾 SAVE</button>
         </div>
     </div>
 
@@ -138,8 +155,8 @@
     <div class="section">
         <div class="section-title">✂️ WINDOW MASKING & TARGET SELECTION</div>
         
-        <!-- Pasek wyboru okna: do którego okna przypisujesz kolejny GIF -->
-        <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:6px;">Select active target window for media:</div>
+        <!-- Pasek wyboru okna: do którego okna przypisujesz kolejny GIF/Shader -->
+        <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:6px;">Select active target window for media / shader:</div>
         <div class="window-tabs" id="windowTabs">
             <button class="window-tab active" onclick="selectTargetWindow(-1)">🌍 ALL / FULL ROOM</button>
         </div>
@@ -147,7 +164,20 @@
         <canvas id="maskCanvas"></canvas>
         <div style="display:flex; justify-content:space-between; margin-top:8px;">
             <button style="font-size:0.8rem; padding:8px 12px;" onclick="resetMasks()">Clear All Windows</button>
+            <button style="font-size:0.8rem; padding:8px 12px; background:rgba(255,75,114,0.15); color:#ff4b72; border-color:#ff4b72;" onclick="removeActiveWindow()">Remove Selected Win</button>
             <span style="font-size:0.8rem; color:var(--text-dim); line-height:30px;" id="winCount">Windows: 0</span>
+        </div>
+    </div>
+
+    <!-- DIRECT FILE UPLOAD FROM PHONE -->
+    <div class="section">
+        <div class="section-title">📁 DIRECT UPLOAD FROM PHONE (PHOTO / VIDEO)</div>
+        <div style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(0,210,255,0.3); border-radius: 12px; padding: 14px; text-align: center;">
+            <input type="file" id="mediaUploadInput" accept="image/*,video/*" style="display:none;" onchange="handlePhoneUpload(event)">
+            <button style="width: 100%; background: linear-gradient(135deg, rgba(0,210,255,0.2), rgba(0,255,136,0.2)); border: 1px solid #00d2ff; color: #fff; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer;" onclick="document.getElementById('mediaUploadInput').click()">
+                📤 CHOOSE FILE FROM GALLERY / CAMERA
+            </button>
+            <div id="uploadStatusText" style="font-size: 0.8rem; color: var(--text-dim); margin-top: 8px;">Upload to selected window or full screen</div>
         </div>
     </div>
 
@@ -313,8 +343,17 @@
                 if (data.type === "sync_state" && data.state) {
                     if (data.state.windows && data.state.windows.length > 0) {
                         windows = data.state.windows;
+                        document.getElementById("winCount").innerText = "Windows: " + windows.length;
                         updateWindowTabs();
                         drawMaskCanvas();
+                    }
+                    if (data.state.grid !== undefined) {
+                        isGrid = !!data.state.grid;
+                        const btn = document.getElementById("gridBtn");
+                        if (btn) {
+                            btn.style.background = isGrid ? "#00d2ff" : "#15222e";
+                            btn.style.color = isGrid ? "#000" : "#00d2ff";
+                        }
                     }
                     if (data.state.uniforms) {
                         if (data.state.uniforms.u_timeSpeed) {
@@ -423,6 +462,8 @@
                     } else if (windows[activeWindowIndex]) {
                         // Indywidualny GIF dla tego konkretnego okna!
                         windows[activeWindowIndex].mediaUrl = g.url;
+                        windows[activeWindowIndex].shaderFile = null;
+                        updateWindowTabs();
                         drawMaskCanvas();
                         send({ type: "masks", windows: windows });
                     }
@@ -475,6 +516,125 @@
             }
         }
 
+        let isGrid = false;
+        function toggleGrid() {
+            isGrid = !isGrid;
+            const btn = document.getElementById("gridBtn");
+            btn.style.background = isGrid ? "#00d2ff" : "#15222e";
+            btn.style.color = isGrid ? "#000" : "#00d2ff";
+            send({ type: "grid", enabled: isGrid });
+        }
+
+        // ROOM PRESETS & SCENES
+        const PRESETS_STORAGE_KEY = "maping_room_presets";
+        function getStoredPresets() {
+            try {
+                return JSON.parse(localStorage.getItem(PRESETS_STORAGE_KEY)) || {};
+            } catch(e) { return {}; }
+        }
+
+        function refreshPresetDropdown() {
+            const select = document.getElementById("presetSelect");
+            const presets = getStoredPresets();
+            select.innerHTML = '<option value="">-- Select Saved Preset --</option>';
+            for (let name in presets) {
+                const opt = document.createElement("option");
+                opt.value = name;
+                opt.textContent = `${name} (${presets[name].length} wins)`;
+                select.appendChild(opt);
+            }
+        }
+        refreshPresetDropdown();
+
+        function savePreset() {
+            const nameInput = document.getElementById("presetNameInput");
+            const name = nameInput.value.trim();
+            if (!name) {
+                alert("Please enter a preset name!");
+                return;
+            }
+            const presets = getStoredPresets();
+            presets[name] = JSON.parse(JSON.stringify(windows));
+            localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+            nameInput.value = "";
+            refreshPresetDropdown();
+            alert(`Preset "${name}" saved! ✨`);
+        }
+
+        function loadPreset() {
+            const select = document.getElementById("presetSelect");
+            const name = select.value;
+            if (!name) {
+                alert("Please select a preset to load!");
+                return;
+            }
+            const presets = getStoredPresets();
+            if (presets[name]) {
+                windows = JSON.parse(JSON.stringify(presets[name]));
+                activeWindowIndex = windows.length > 0 ? 0 : -1;
+                document.getElementById("winCount").innerText = "Windows: " + windows.length;
+                updateWindowTabs();
+                drawMaskCanvas();
+                send({ type: "masks", windows: windows });
+            }
+        }
+
+        function deletePreset() {
+            const select = document.getElementById("presetSelect");
+            const name = select.value;
+            if (!name) return;
+            if (confirm(`Delete preset "${name}"?`)) {
+                const presets = getStoredPresets();
+                delete presets[name];
+                localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+                refreshPresetDropdown();
+            }
+        }
+
+        function removeActiveWindow() {
+            if (activeWindowIndex >= 0 && activeWindowIndex < windows.length) {
+                windows.splice(activeWindowIndex, 1);
+                activeWindowIndex = windows.length > 0 ? Math.min(activeWindowIndex, windows.length - 1) : -1;
+                document.getElementById("winCount").innerText = "Windows: " + windows.length;
+                updateWindowTabs();
+                drawMaskCanvas();
+                send({ type: "masks", windows: windows });
+            } else {
+                alert("Select a specific window tab first to remove it!");
+            }
+        }
+
+        // DIRECT FILE UPLOAD FROM PHONE
+        function handlePhoneUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const status = document.getElementById("uploadStatusText");
+            status.innerText = `Reading "${file.name}" (${(file.size / 1024).toFixed(1)} KB)...`;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                status.innerText = `Uploaded: ${file.name} ✅`;
+
+                if (activeWindowIndex === -1) {
+                    // Ekran globalny
+                    send({ type: "gif", url: dataUrl });
+                } else if (windows[activeWindowIndex]) {
+                    // Dedykowane okno
+                    windows[activeWindowIndex].mediaUrl = dataUrl;
+                    windows[activeWindowIndex].shaderFile = null; // usun ew. shader na rzecz mediów
+                    updateWindowTabs();
+                    drawMaskCanvas();
+                    send({ type: "masks", windows: windows });
+                }
+            };
+            reader.onerror = function() {
+                status.innerText = "Upload failed!";
+            };
+            reader.readAsDataURL(file);
+        }
+
         const shaders = [
             { file: "plasma_glow_frag.glsl", name: "Plasma Glow", img: "plasmaGlow.png" },
             { file: "flow_gradient_frag.glsl", name: "Flow Gradient", img: "flowGradient.png" },
@@ -498,7 +658,17 @@
             card.onclick = () => {
                 document.querySelectorAll(".shader-card").forEach(c => c.classList.remove("active"));
                 card.classList.add("active");
-                send({ type: "shader", file: s.file });
+                if (activeWindowIndex === -1) {
+                    // Shader na globalne tło
+                    send({ type: "shader", file: s.file });
+                } else if (windows[activeWindowIndex]) {
+                    // SHADER DLA DANEGO KONKRETNEGO OKNA!
+                    windows[activeWindowIndex].shaderFile = s.file;
+                    windows[activeWindowIndex].mediaUrl = null;
+                    updateWindowTabs();
+                    drawMaskCanvas();
+                    send({ type: "masks", windows: windows });
+                }
             };
             listContainer.appendChild(card);
         });
@@ -513,7 +683,10 @@
             const tabs = document.getElementById("windowTabs");
             tabs.innerHTML = `<button class="window-tab ${activeWindowIndex === -1 ? 'active' : ''}" onclick="selectTargetWindow(-1)">🌍 ALL / FULL ROOM</button>`;
             windows.forEach((w, i) => {
-                tabs.innerHTML += `<button class="window-tab ${activeWindowIndex === i ? 'active' : ''}" onclick="selectTargetWindow(${i})">🪟 WINDOW #${i + 1} ${w.mediaUrl ? '✅' : ''}</button>`;
+                let badge = "";
+                if (w.shaderFile) badge = "✨";
+                else if (w.mediaUrl) badge = "🎬";
+                tabs.innerHTML += `<button class="window-tab ${activeWindowIndex === i ? 'active' : ''}" onclick="selectTargetWindow(${i})">🪟 WINDOW #${i + 1} ${badge}</button>`;
             });
             const title = activeWindowIndex === -1 ? "🌍 ALL / FULL ROOM" : `🪟 WINDOW #${activeWindowIndex + 1}`;
             document.getElementById("gifSectionTitle").innerText = "🐱 ASSIGN GIF TO: " + title;
@@ -598,7 +771,8 @@
                 mCtx.fillStyle = "#ffffff";
                 mCtx.font = "bold 13px sans-serif";
                 mCtx.textAlign = "center";
-                mCtx.fillText(`Window #${wIdx + 1} ${win.mediaUrl ? '🎬' : ''}`, centerX, centerY);
+                let winTag = win.shaderFile ? '✨' : (win.mediaUrl ? '🎬' : '');
+                mCtx.fillText(`Window #${wIdx + 1} ${winTag}`, centerX, centerY);
 
                 win.points.forEach((p) => {
                     const px = p.x * mCanvas.width;

@@ -136,6 +136,9 @@
             <rect width="100%" height="100%" fill="black" mask="url(#windowHoles)" id="maskCurtain" style="display:none;" />
         </svg>
 
+        <!-- Warstwa Siatki Kalibracyjnej (Grid / Alignment Mode) -->
+        <canvas id="gridCanvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:30; display:none;"></canvas>
+
         <div id="blackout"></div>
 
         <div id="pinBanner">
@@ -297,26 +300,149 @@
         }
         render();
 
-        // Renderowanie wielu niezależnych okien z indywidualnymi gifami!
-        function applyMasksAndSurfaces(windows) {
+        const gridCanvas = document.getElementById("gridCanvas");
+        let gridActive = false;
+
+        function drawCalibrationGrid() {
+            if (!gridCanvas) return;
+            const ctx = gridCanvas.getContext("2d");
+            gridCanvas.width = window.innerWidth;
+            gridCanvas.height = window.innerHeight;
+            const w = gridCanvas.width;
+            const h = gridCanvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
+            ctx.fillRect(0, 0, w, h);
+
+            // Gęsta siatka z liniami
+            const step = 50;
+            ctx.lineWidth = 1;
+
+            // Drobne linie
+            ctx.strokeStyle = "rgba(0, 210, 255, 0.25)";
+            for (let x = 0; x < w; x += step) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+            }
+            for (let y = 0; y < h; y += step) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            }
+
+            // Główne osie i linie co 200px
+            ctx.strokeStyle = "rgba(0, 255, 136, 0.6)";
+            ctx.lineWidth = 2;
+            for (let x = 0; x < w; x += step * 4) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+            }
+            for (let y = 0; y < h; y += step * 4) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            }
+
+            // Ramka zewnętrzna
+            ctx.strokeStyle = "#ff4b72";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(2, 2, w - 4, h - 4);
+
+            // Przekątne do kalibracji geometrii obiektywu / trapezu (keystone)
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+            ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(w, h); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(w, 0); ctx.lineTo(0, h); ctx.stroke();
+
+            // Centralny celownik
+            ctx.strokeStyle = "#00ff88";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(w / 2, h / 2, 40, 0, Math.PI * 2);
+            ctx.arc(w / 2, h / 2, 80, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Rysuj punkty i obrysy aktualnych okien z celownikami w narożnikach
+            if (activeState.windows && activeState.windows.length > 0) {
+                activeState.windows.forEach((win, winIdx) => {
+                    ctx.beginPath();
+                    win.points.forEach((p, pi) => {
+                        const px = p.x * w;
+                        const py = p.y * h;
+                        if (pi === 0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    });
+                    ctx.closePath();
+                    ctx.strokeStyle = "#00ff88";
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    // Celowniki na rogach
+                    win.points.forEach((p, pi) => {
+                        const px = p.x * w;
+                        const py = p.y * h;
+                        ctx.fillStyle = "#ff4b72";
+                        ctx.beginPath();
+                        ctx.arc(px, py, 10, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = "#ffffff";
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+
+                        ctx.fillStyle = "#ffffff";
+                        ctx.font = "bold 12px monospace";
+                        ctx.fillText(`W${winIdx+1}:P${pi+1}`, px + 12, py - 6);
+                    });
+                });
+            }
+
+            // Etykieta kalibracji
+            ctx.fillStyle = "#00d2ff";
+            ctx.font = "bold 20px monospace";
+            ctx.textAlign = "center";
+            ctx.fillText("📐 CALIBRATION & ALIGNMENT MODE", w / 2, 50);
+            ctx.fillStyle = "#8b9bb4";
+            ctx.font = "14px monospace";
+            ctx.fillText(`Resolution: ${w}x${h} | Projector HY320`, w / 2, 75);
+        }
+
+        // Cache pobranych shaderów
+        const shaderSourceCache = {};
+        async function getShaderSource(file) {
+            if (shaderSourceCache[file]) return shaderSourceCache[file];
+            const r = await fetch("extracted_assets/shaders/" + file);
+            const code = await r.text();
+            shaderSourceCache[file] = code;
+            return code;
+        }
+
+        // Tablica aktywnych rendererów dla okien z osobnymi shaderami
+        let windowShaderRenderers = [];
+
+        function cleanupWindowShaders() {
+            windowShaderRenderers.forEach(r => {
+                if (r.animId) cancelAnimationFrame(r.animId);
+            });
+            windowShaderRenderers = [];
+        }
+
+        // Renderowanie wielu niezależnych okien z mediami lub shaderami!
+        async function applyMasksAndSurfaces(windows) {
+            cleanupWindowShaders();
             windowsLayer.innerHTML = "";
             if (!windows || windows.length === 0) {
                 maskCurtain.style.display = "none";
                 maskHoles.innerHTML = "";
+                if (gridActive) drawCalibrationGrid();
                 return;
             }
 
             maskCurtain.style.display = "block";
             let holesSvg = "";
 
-            windows.forEach((w, idx) => {
+            for (let idx = 0; idx < windows.length; idx++) {
+                const w = windows[idx];
                 const pts = w.points.map(p => `${p.x * window.innerWidth},${p.y * window.innerHeight}`).join(" ");
                 // Wycięcie dziury w czarnej zasłonie
                 holesSvg += `<polygon points="${pts}" fill="black" />`;
 
-                // Jeśli okno ma przypisany własny dedykowany GIF/wideo:
-                if (w.mediaUrl) {
-                    // Wylicz bounding box okna w pikselach
+                // Jeśli okno ma przypisany własny shader LUB mediaUrl (GIF/obrazek/wideo):
+                if (w.shaderFile || w.mediaUrl) {
                     const xs = w.points.map(p => p.x * window.innerWidth);
                     const ys = w.points.map(p => p.y * window.innerHeight);
                     const minX = Math.min(...xs);
@@ -326,7 +452,6 @@
                     const boxW = Math.max(10, maxX - minX);
                     const boxH = Math.max(10, maxY - minY);
 
-                    // Ścieżka klipowania relatywna do bounding boxa
                     const relPts = w.points.map(p => {
                         const rx = ((p.x * window.innerWidth - minX) / boxW) * 100;
                         const ry = ((p.y * window.innerHeight - minY) / boxH) * 100;
@@ -351,11 +476,73 @@
                     surfaceDiv.style.alignItems = "center";
                     surfaceDiv.style.justifyContent = "center";
 
-                    surfaceDiv.innerHTML = `<img src="${w.mediaUrl}" style="width:100%; height:100%; object-fit:${fit}; transform: translate(${posX}%, ${posY}%) scale(${scale}); transform-origin:center;" />`;
-                    windowsLayer.appendChild(surfaceDiv);
+                    if (w.shaderFile) {
+                        // Indywidualny WebGL Canvas dla tego okna
+                        const wCanvas = document.createElement("canvas");
+                        wCanvas.width = boxW;
+                        wCanvas.height = boxH;
+                        wCanvas.style.width = "100%";
+                        wCanvas.style.height = "100%";
+                        surfaceDiv.appendChild(wCanvas);
+                        windowsLayer.appendChild(surfaceDiv);
+
+                        const wgl = wCanvas.getContext("webgl") || wCanvas.getContext("experimental-webgl");
+                        if (wgl) {
+                            const fragCode = await getShaderSource(w.shaderFile);
+                            const vs = createShader(wgl, wgl.VERTEX_SHADER, vsSource);
+                            const fs = createShader(wgl, wgl.FRAGMENT_SHADER, fragCode);
+                            if (vs && fs) {
+                                const prog = wgl.createProgram();
+                                wgl.attachShader(prog, vs);
+                                wgl.attachShader(prog, fs);
+                                wgl.linkProgram(prog);
+                                if (wgl.getProgramParameter(prog, wgl.LINK_STATUS)) {
+                                    const posBuf = wgl.createBuffer();
+                                    wgl.bindBuffer(wgl.ARRAY_BUFFER, posBuf);
+                                    wgl.bufferData(wgl.ARRAY_BUFFER, new Float32Array([
+                                        -1, -1,  1, -1, -1,  1,
+                                        -1,  1,  1, -1,  1,  1
+                                    ]), wgl.STATIC_DRAW);
+                                    const aP = wgl.getAttribLocation(prog, "aPosition");
+                                    wgl.enableVertexAttribArray(aP);
+                                    wgl.vertexAttribPointer(aP, 2, wgl.FLOAT, false, 0, 0);
+
+                                    const wStart = Date.now();
+                                    const winRenderer = { animId: null };
+                                    function renderWinShader() {
+                                        if (blackout.style.display !== "block") {
+                                            wgl.useProgram(prog);
+                                            const t = (Date.now() - wStart) * 0.001;
+                                            const ut = wgl.getUniformLocation(prog, "u_time");
+                                            if (ut) wgl.uniform1f(ut, t);
+                                            const ur = wgl.getUniformLocation(prog, "u_resolution");
+                                            if (ur) wgl.uniform2f(ur, boxW, boxH);
+                                            for (let k in uniforms) {
+                                                const loc = wgl.getUniformLocation(prog, k);
+                                                if (loc) wgl.uniform1f(loc, uniforms[k]);
+                                            }
+                                            wgl.drawArrays(wgl.TRIANGLES, 0, 6);
+                                        }
+                                        winRenderer.animId = requestAnimationFrame(renderWinShader);
+                                    }
+                                    renderWinShader();
+                                    windowShaderRenderers.push(winRenderer);
+                                }
+                            }
+                        }
+                    } else if (w.mediaUrl) {
+                        const isVideo = w.mediaUrl.startsWith("data:video") || w.mediaUrl.endsWith(".mp4") || w.mediaUrl.endsWith(".webm");
+                        if (isVideo) {
+                            surfaceDiv.innerHTML = `<video src="${w.mediaUrl}" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:${fit}; transform: translate(${posX}%, ${posY}%) scale(${scale}); transform-origin:center;"></video>`;
+                        } else {
+                            surfaceDiv.innerHTML = `<img src="${w.mediaUrl}" style="width:100%; height:100%; object-fit:${fit}; transform: translate(${posX}%, ${posY}%) scale(${scale}); transform-origin:center;" />`;
+                        }
+                        windowsLayer.appendChild(surfaceDiv);
+                    }
                 }
-            });
+            }
             maskHoles.innerHTML = holesSvg;
+            if (gridActive) drawCalibrationGrid();
         }
 
         // Pełna konfiguracja ICE (STUN + TURN) do łączenia urządzeń w RÓŻNYCH SIECIACH (LTE/Wi-Fi/NAT)
@@ -373,6 +560,15 @@
             }
         };
 
+        const activeState = {
+            windows: [],
+            uniforms: uniforms,
+            isBlackout: false,
+            grid: false,
+            currentType: "shader",
+            currentFile: "plasma_glow_frag.glsl"
+        };
+
         const peer = new Peer(peerId, peerConfig);
         peer.on("open", () => { pinCodeEl.innerText = roomPin; });
 
@@ -385,15 +581,6 @@
                 pinBanner.style.pointerEvents = "none";
             }, 3000);
 
-            // Zapisujemy aktywny stan w pamięci projektora
-            let activeState = {
-                windows: [],
-                uniforms: uniforms,
-                isBlackout: false,
-                currentType: "shader",
-                currentFile: "plasma_glow_frag.glsl"
-            };
-
             // Po sparowaniu z pilotem natychmiast wyślij mu aktualny stan!
             conn.on("open", () => {
                 conn.send({
@@ -403,7 +590,12 @@
             });
 
             conn.on("data", (data) => {
-                if (data.type === "shader") {
+                if (data.type === "grid") {
+                    gridActive = !!data.enabled;
+                    activeState.grid = gridActive;
+                    gridCanvas.style.display = gridActive ? "block" : "none";
+                    if (gridActive) drawCalibrationGrid();
+                } else if (data.type === "shader") {
                     activeState.currentType = "shader";
                     activeState.currentFile = data.file;
                     ytPlayer.style.display = "none";
