@@ -754,21 +754,28 @@
             conn = peer.connect(targetPeerId, { reliable: true });
 
             const markConnected = () => {
-                dot.className = "status-dot online";
-                statusText.innerText = "Połączono (#" + fullPin + ")";
-                document.querySelector(".btn-connect").innerText = "POŁĄCZONO! ✨";
-                pinModal.style.display = "none";
-                localStorage.setItem("last_maping_pin", fullPin);
+                try {
+                    const m = document.getElementById("pinModal");
+                    if (m) m.style.display = "none";
+                } catch(e){}
+                try {
+                    if (dot) dot.className = "status-dot online";
+                    if (statusText) statusText.innerText = "Połączono (#" + fullPin + ")";
+                    const btn = document.querySelector(".btn-connect");
+                    if (btn) btn.innerText = "POŁĄCZONO! ✨";
+                    localStorage.setItem("last_maping_pin", fullPin);
+                } catch(e){}
 
-                const localWindows = localStorage.getItem("maping_windows_" + fullPin);
-                if (localWindows) {
-                    try {
+                try {
+                    const localWindows = localStorage.getItem("maping_windows_" + fullPin);
+                    if (localWindows) {
                         windows = JSON.parse(localWindows);
-                        document.getElementById("winCount").innerText = "Okna: " + windows.length;
+                        const wc = document.getElementById("winCount");
+                        if (wc) wc.innerText = "Okna: " + windows.length;
                         updateWindowTabs();
                         drawMaskCanvas();
-                    } catch(e){}
-                }
+                    }
+                } catch(e){}
             };
 
             conn.on("open", () => {
