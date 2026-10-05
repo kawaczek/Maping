@@ -221,7 +221,22 @@
 
         let activeWindowIndex = -1; // -1 = All / Global, 0 = Window 1, 1 = Window 2...
 
-        let peerReady = false;
+        // Pełna konfiguracja ICE (STUN) do przebijania NAT między różnymi sieciami (LTE <-> Domowe Wi-Fi)
+        const peerConfig = {
+            config: {
+                iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:stun1.l.google.com:19302" },
+                    { urls: "stun:stun2.l.google.com:19302" },
+                    { urls: "stun:stun3.l.google.com:19302" },
+                    { urls: "stun:stun4.l.google.com:19302" },
+                    { urls: "stun:stun.cloudflare.com:3478" }
+                ],
+                iceCandidatePoolSize: 10
+            }
+        };
+
+        const peer = new Peer(peerConfig);
         peer.on("open", () => {
             peerReady = true;
             if (urlPin) {

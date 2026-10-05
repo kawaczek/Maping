@@ -324,7 +324,22 @@
             maskHoles.innerHTML = holesSvg;
         }
 
-        const peer = new Peer(peerId);
+        // Pełna konfiguracja ICE (STUN + TURN) do łączenia urządzeń w RÓŻNYCH SIECIACH (LTE/Wi-Fi/NAT)
+        const peerConfig = {
+            config: {
+                iceServers: [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:stun1.l.google.com:19302" },
+                    { urls: "stun:stun2.l.google.com:19302" },
+                    { urls: "stun:stun3.l.google.com:19302" },
+                    { urls: "stun:stun4.l.google.com:19302" },
+                    { urls: "stun:stun.cloudflare.com:3478" }
+                ],
+                iceCandidatePoolSize: 10
+            }
+        };
+
+        const peer = new Peer(peerId, peerConfig);
         peer.on("open", () => { pinCodeEl.innerText = roomPin; });
 
         peer.on("connection", (conn) => {
