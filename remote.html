@@ -412,10 +412,10 @@
     <!-- PIN Connection Modal -->
     <div id="pinModal">
         <div class="pin-card">
-            <h2>🛡️ Bezpieczne Połączenie</h2>
-            <p>Zeskanuj kod QR z ekranu lub wpisz 6-cyfrowy kod PIN:</p>
+            <h2>🛡️ Secure Connection</h2>
+            <p>Scan the QR code from the screen or enter the 6-digit PIN:</p>
             <input type="tel" id="inputPin" class="pin-input" maxlength="6" placeholder="------" autofocus />
-            <button class="btn-connect" onclick="connectWithPin()">POŁĄCZ Z EKRANEM 🚀</button>
+            <button class="btn-connect" onclick="connectWithPin()">CONNECT TO DISPLAY 🚀</button>
         </div>
     </div>
 
@@ -432,16 +432,16 @@
 
     <!-- Quick Actions Bar -->
     <div class="top-action-bar">
-        <button class="quick-btn" id="gridBtn" onclick="toggleGrid()">📐 Siatka / Celownik</button>
-        <button class="quick-btn" id="blackoutBtn" onclick="toggleBlackout()">🌑 Wygaszenie</button>
-        <button class="quick-btn" onclick="addWindow()">➕ Nowe Okno</button>
+        <button class="quick-btn" id="gridBtn" onclick="toggleGrid()">📐 Alignment Grid</button>
+        <button class="quick-btn" id="blackoutBtn" onclick="toggleBlackout()">🌑 Blackout</button>
+        <button class="quick-btn" onclick="addWindow()">➕ New Window</button>
     </div>
 
     <!-- Window Target Selector (Visible across all tabs) -->
     <div style="padding: 12px 16px 0 16px;">
-        <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; font-weight:600;">CEL PROJEKCJI:</div>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; font-weight:600;">PROJECTION TARGET:</div>
         <div class="window-tabs-container" id="windowTabs">
-            <button class="win-tab-pill active" onclick="selectTargetWindow(-1)">🌍 Cały Pokój (Full Room)</button>
+            <button class="win-tab-pill active" onclick="selectTargetWindow(-1)">🌍 Entire Room (Full Wall)</button>
         </div>
     </div>
 
@@ -451,16 +451,16 @@
         <div class="app-card">
             <div class="card-header">
                 <div>
-                    <div class="card-title">✂️ Kształt i Pozycja Okien</div>
-                    <div class="card-subtitle">Dotknij i przeciągaj wierzchołki, aby dopasować ramę</div>
+                    <div class="card-title">✂️ Window Shape & Framing</div>
+                    <div class="card-subtitle">Touch and drag corners to match your physical wall / frame</div>
                 </div>
-                <span style="font-size:0.8rem; color:var(--accent-cyan); font-weight:bold;" id="winCount">Okna: 0</span>
+                <span style="font-size:0.8rem; color:var(--accent-cyan); font-weight:bold;" id="winCount">Windows: 0</span>
             </div>
             <canvas id="maskCanvas"></canvas>
             <div style="display:flex; justify-content:space-between; gap:8px; margin-top:10px;">
-                <button class="action-btn btn-gradient-coral" style="flex:1;" onclick="removeActiveWindow()">🗑️ Usuń to Okno</button>
-                <button class="action-btn" style="flex:1;" onclick="clearActiveMedia()">❌ Wyczyść Treść</button>
-                <button class="action-btn" onclick="resetMasks()">Wyczyść Wszystko</button>
+                <button class="action-btn btn-gradient-coral" style="flex:1;" onclick="removeActiveWindow()">🗑️ Remove Window</button>
+                <button class="action-btn" style="flex:1;" onclick="clearActiveMedia()">❌ Clear Content</button>
+                <button class="action-btn" onclick="resetMasks()">Reset All</button>
             </div>
         </div>
 
@@ -468,18 +468,18 @@
         <div class="app-card">
             <div class="card-header">
                 <div>
-                    <div class="card-title">🪟 Szprosy i Ramy Okienne</div>
-                    <div class="card-subtitle">Wytnij plastikowe belki, aby świecić tylko w szyby</div>
+                    <div class="card-title">🪟 Window Mullions & Dividers</div>
+                    <div class="card-subtitle">Cut out frame bars to illuminate only window panes</div>
                 </div>
             </div>
             <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-bottom:12px;">
-                <button class="action-btn" id="mull_none" style="border-color:var(--accent-green);" onclick="setWindowMullion('none')">Brak</button>
-                <button class="action-btn" id="mull_vert" onclick="setWindowMullion('vertical')">Pion ◫</button>
-                <button class="action-btn" id="mull_horiz" onclick="setWindowMullion('horizontal')">Poziom ▤</button>
-                <button class="action-btn" id="mull_cross" onclick="setWindowMullion('cross')">Krzyżak ⊞</button>
+                <button class="action-btn" id="mull_none" style="border-color:var(--accent-green);" onclick="setWindowMullion('none')">None</button>
+                <button class="action-btn" id="mull_vert" onclick="setWindowMullion('vertical')">Vertical ◫</button>
+                <button class="action-btn" id="mull_horiz" onclick="setWindowMullion('horizontal')">Horizontal ▤</button>
+                <button class="action-btn" id="mull_cross" onclick="setWindowMullion('cross')">Cross ⊞</button>
             </div>
             <div class="slider-row" style="margin-bottom:0;">
-                <div class="slider-meta"><span>Grubość belki szprosu</span><span id="val_mull_thick">5%</span></div>
+                <div class="slider-meta"><span>Bar Thickness</span><span id="val_mull_thick">5%</span></div>
                 <input type="range" id="slider_mull_thick" min="1" max="15" step="1" value="5" oninput="updateMullionThick(this.value)">
             </div>
         </div>
@@ -488,31 +488,31 @@
         <div class="app-card">
             <div class="card-header">
                 <div>
-                    <div class="card-title">💾 Zapisane Pokoje i Układy</div>
-                    <div class="card-subtitle">Zapisz ustawienie salonu lub sypialni na stałe</div>
+                    <div class="card-title">💾 Saved Rooms & Layouts</div>
+                    <div class="card-subtitle">Store custom room configurations permanently</div>
                 </div>
             </div>
             <div style="display:flex; gap:8px; margin-bottom:8px;">
                 <select id="presetSelect" class="input-stylish" style="flex:1;">
-                    <option value="">-- Wybierz zapisany pokój --</option>
+                    <option value="">-- Choose a saved room --</option>
                 </select>
-                <button class="action-btn btn-gradient-green" onclick="loadPreset()">Wczytaj</button>
-                <button class="action-btn btn-gradient-coral" onclick="deletePreset()">Usuń</button>
+                <button class="action-btn btn-gradient-green" onclick="loadPreset()">Load</button>
+                <button class="action-btn btn-gradient-coral" onclick="deletePreset()">Delete</button>
             </div>
             <div style="display:flex; gap:8px;">
-                <input type="text" id="presetNameInput" placeholder="Nazwa nowego profilu (np. Salon 2 Okna)..." class="input-stylish" style="flex:1;">
-                <button class="action-btn btn-gradient-cyan" onclick="savePreset()">Zapisz 💾</button>
+                <input type="text" id="presetNameInput" placeholder="New profile name (e.g. Living Room 2 Windows)..." class="input-stylish" style="flex:1;">
+                <button class="action-btn btn-gradient-cyan" onclick="savePreset()">Save 💾</button>
             </div>
         </div>
     </div>
 
-    <!-- TAB 2: 🎨 WIDOKI & PEJZAŻE (SHADERS) -->
+    <!-- TAB 2: 🎨 VIEWS & SCENERIES (SHADERS) -->
     <div class="tab-content" id="tab-views">
         <div class="app-card">
             <div class="card-header">
                 <div>
-                    <div class="card-title">🌿 Autorskie Widoki i Pejzaże</div>
-                    <div class="card-subtitle">Fotorealistyczne scenerie i nastrojowe animacje</div>
+                    <div class="card-title">🌿 Original Views & Sceneries</div>
+                    <div class="card-subtitle">Photorealistic landscapes and ambient GLSL animations</div>
                 </div>
             </div>
             <div class="card-grid" id="shaderList"></div>
@@ -523,84 +523,84 @@
     <div class="tab-content" id="tab-media">
         <!-- Direct Upload from Phone -->
         <div class="app-card" style="text-align:center;">
-            <div class="card-title" style="justify-content:center; margin-bottom:4px;">📤 Zdjęcie lub Film z Telefonu</div>
-            <div class="card-subtitle" style="margin-bottom:12px;">Wybierz dowolne wideo lub grafikę bezpośrednio z galerii</div>
+            <div class="card-title" style="justify-content:center; margin-bottom:4px;">📤 Photo or Video from Phone</div>
+            <div class="card-subtitle" style="margin-bottom:12px;">Cast any video or image directly from your gallery</div>
             <input type="file" id="mediaUploadInput" accept="image/*,video/*" style="display:none;" onchange="handlePhoneUpload(event)">
             <button class="action-btn btn-gradient-cyan" style="width:100%; padding:12px;" onclick="document.getElementById('mediaUploadInput').click()">
-                🖼️ WYBIERZ Z GALERII TELEFONU
+                🖼️ CHOOSE FROM PHONE GALLERY
             </button>
-            <div id="uploadStatusText" style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;">Gotowy do wysłania na wybrane okno</div>
+            <div id="uploadStatusText" style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;">Ready to cast to selected window</div>
         </div>
 
         <!-- Precision Transform (Zoom, Shift, Fit) -->
         <div class="app-card">
-            <div class="card-title" style="margin-bottom:10px;">🎯 Dopasowanie Mediów w Ramie</div>
+            <div class="card-title" style="margin-bottom:10px;">🎯 Frame Media Alignment</div>
             <div class="slider-row">
-                <div class="slider-meta"><span>Powiększenie (Zoom)</span><span id="val_gif_scale">100%</span></div>
+                <div class="slider-meta"><span>Zoom Scale</span><span id="val_gif_scale">100%</span></div>
                 <input type="range" id="slider_gif_scale" min="0.1" max="3.0" step="0.05" value="1.0" oninput="updateGifScale(this.value)">
             </div>
             <div class="slider-row">
-                <div class="slider-meta"><span>Przesunięcie w poziomie (X)</span><span id="val_gif_x">0%</span></div>
+                <div class="slider-meta"><span>Horizontal Offset (X)</span><span id="val_gif_x">0%</span></div>
                 <input type="range" id="slider_gif_x" min="-100" max="100" step="2" value="0" oninput="updateGifPos('X', this.value)">
             </div>
             <div class="slider-row">
-                <div class="slider-meta"><span>Przesunięcie w pionie (Y)</span><span id="val_gif_y">0%</span></div>
+                <div class="slider-meta"><span>Vertical Offset (Y)</span><span id="val_gif_y">0%</span></div>
                 <input type="range" id="slider_gif_y" min="-100" max="100" step="2" value="0" oninput="updateGifPos('Y', this.value)">
             </div>
             <div style="display:flex; gap:6px;">
-                <button class="action-btn" style="flex:1;" onclick="setGifFit('contain')">Dopasuj (Contain)</button>
-                <button class="action-btn" style="flex:1;" onclick="setGifFit('cover')">Wypełnij (Cover)</button>
-                <button class="action-btn btn-gradient-coral" style="flex:1;" onclick="resetGifTransform()">Wyśrodkuj</button>
+                <button class="action-btn" style="flex:1;" onclick="setGifFit('contain')">Contain</button>
+                <button class="action-btn" style="flex:1;" onclick="setGifFit('cover')">Cover</button>
+                <button class="action-btn btn-gradient-coral" style="flex:1;" onclick="resetGifTransform()">Center</button>
             </div>
         </div>
 
         <!-- GIF Loops & Direct Caster -->
         <div class="app-card">
-            <div class="card-title" style="margin-bottom:8px;">🚀 Popularne Animacje GIF</div>
+            <div class="card-title" style="margin-bottom:8px;">🚀 Popular Looping Animations</div>
             <div style="display:flex; gap:8px; margin-bottom:12px;">
-                <input type="text" id="customGifInput" placeholder="Wklej dowolny link do GIF-a z sieci..." class="input-stylish" onkeydown="if(event.key==='Enter') applyCustomGif()">
-                <button class="action-btn btn-gradient-cyan" onclick="applyCustomGif()">Odtwórz</button>
+                <input type="text" id="customGifInput" placeholder="Paste any online GIF/video link..." class="input-stylish" onkeydown="if(event.key==='Enter') applyCustomGif()">
+                <button class="action-btn btn-gradient-cyan" onclick="applyCustomGif()">Play</button>
             </div>
             <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:8px; margin-bottom:10px; scrollbar-width:none;">
-                <button class="action-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="filterGifs('party')">🎉 Impreza</button>
+                <button class="action-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="filterGifs('party')">🎉 Party</button>
                 <button class="action-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="filterGifs('trippy')">🌀 Neon & VJ</button>
-                <button class="action-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="filterGifs('memes')">😂 Memy</button>
-                <button class="action-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="filterGifs('nature')">🔥 Natura</button>
+                <button class="action-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="filterGifs('memes')">😂 Memes</button>
+                <button class="action-btn" style="font-size:0.75rem; padding:6px 10px;" onclick="filterGifs('nature')">🔥 Nature</button>
             </div>
             <div class="card-grid" id="gifGrid"></div>
         </div>
 
         <!-- Cast YouTube Video -->
         <div class="app-card">
-            <div class="card-title" style="margin-bottom:8px;">▶️ YouTube Video na Żywo</div>
+            <div class="card-title" style="margin-bottom:8px;">▶️ Live YouTube Stream</div>
             <div style="display:flex; gap:8px;">
-                <input type="text" id="ytUrl" placeholder="Wklej link z YouTube..." class="input-stylish">
-                <button class="action-btn btn-gradient-coral" onclick="sendYouTube()">ODPAL</button>
+                <input type="text" id="ytUrl" placeholder="Paste YouTube link..." class="input-stylish">
+                <button class="action-btn btn-gradient-coral" onclick="sendYouTube()">PLAY</button>
             </div>
         </div>
     </div>
 
-    <!-- TAB 4: ✨ KLIMAT & EFEKTY (ATMOSPHERE) -->
+    <!-- TAB 4: ✨ ATMOSPHERE & AMBIENCE -->
     <div class="tab-content" id="tab-mood">
         <!-- Surprise Atmosphere Triggers -->
         <div class="app-card">
             <div class="card-header">
                 <div>
-                    <div class="card-title">⚡ Efekty Niespodzianki za Oknem</div>
-                    <div class="card-subtitle">Subtelne akcenty ożywiające pokój</div>
+                    <div class="card-title">⚡ Outside Window Ambience</div>
+                    <div class="card-subtitle">Subtle surprise accents bringing the room alive</div>
                 </div>
             </div>
             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:8px; margin-bottom:12px;">
-                <button class="action-btn" style="border-color:#fff;" onclick="triggerAtmosphere('lightning')">⚡ Błyskawica</button>
-                <button class="action-btn btn-gradient-cyan" onclick="triggerAtmosphere('shadow')">🐈 Cień Kota</button>
+                <button class="action-btn" style="border-color:#fff;" onclick="triggerAtmosphere('lightning')">⚡ Lightning</button>
+                <button class="action-btn btn-gradient-cyan" onclick="triggerAtmosphere('shadow')">🐈 Cat Shadow</button>
                 <button class="action-btn btn-gradient-coral" onclick="triggerAtmosphere('star')">🌠 Meteor</button>
             </div>
             <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); padding:10px 14px; border-radius:12px; border:1px solid var(--card-border);">
                 <div>
-                    <div style="font-size:0.85rem; font-weight:600;">🎲 Losowy Cykl Niespodzianek</div>
-                    <div style="font-size:0.75rem; color:var(--text-muted);">Samoczynne wyzwalanie co ~25 sekund</div>
+                    <div style="font-size:0.85rem; font-weight:600;">🎲 Auto Ambience Cycle</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">Triggers randomly every ~25 seconds</div>
                 </div>
-                <button id="autoAtmosphereBtn" class="action-btn" onclick="toggleAutoAtmosphere()">WYŁĄCZONE</button>
+                <button id="autoAtmosphereBtn" class="action-btn" onclick="toggleAutoAtmosphere()">DISABLED</button>
             </div>
         </div>
 
@@ -608,20 +608,20 @@
         <div class="app-card">
             <div class="card-header">
                 <div>
-                    <div class="card-title">⏱️ Niezależny Rytm Okna</div>
-                    <div class="card-subtitle">Ustaw opóźnienie startu, aby okna nie zapętlały się identycznie</div>
+                    <div class="card-title">⏱️ Individual Window Rhythm</div>
+                    <div class="card-subtitle">Set start offset so panes don't loop identically</div>
                 </div>
             </div>
             <div class="slider-row">
-                <div class="slider-meta"><span>Opóźnienie startu (Stagger Delay)</span><span id="val_win_delay">0s</span></div>
+                <div class="slider-meta"><span>Start Offset (Stagger Delay)</span><span id="val_win_delay">0s</span></div>
                 <input type="range" id="slider_win_delay" min="0" max="10" step="1" value="0" oninput="updateWinParam('delay', this.value, 'val_win_delay', 's')">
             </div>
             <div class="slider-row">
-                <div class="slider-meta"><span>Indywidualna prędkość okna</span><span id="val_win_speed">1.0x</span></div>
+                <div class="slider-meta"><span>Window Speed Multiplier</span><span id="val_win_speed">1.0x</span></div>
                 <input type="range" id="slider_win_speed" min="0.2" max="3.0" step="0.1" value="1.0" oninput="updateWinParam('speed', this.value, 'val_win_speed', 'x')">
             </div>
             <div class="slider-row" style="margin-bottom:0;">
-                <div class="slider-meta"><span>Indywidualna jasność okna</span><span id="val_win_bright">100%</span></div>
+                <div class="slider-meta"><span>Window Brightness</span><span id="val_win_bright">100%</span></div>
                 <input type="range" id="slider_win_bright" min="0.1" max="1.5" step="0.05" value="1.0" oninput="updateWinParam('brightness', this.value, 'val_win_bright', '%')">
             </div>
         </div>
@@ -630,20 +630,20 @@
         <div class="app-card">
             <div class="card-header">
                 <div>
-                    <div class="card-title">🎛️ Globalne Parametry Światła</div>
-                    <div class="card-subtitle">Wspólna jasność i tonacja całej ściany</div>
+                    <div class="card-title">🎛️ Master Light Controls</div>
+                    <div class="card-subtitle">Global brightness and color tone across all surfaces</div>
                 </div>
             </div>
             <div class="slider-row">
-                <div class="slider-meta"><span>Ogólna Jasność</span><span id="val_bright">1.0</span></div>
+                <div class="slider-meta"><span>Master Brightness</span><span id="val_bright">1.0</span></div>
                 <input type="range" min="0.1" max="2.0" step="0.1" value="1.0" oninput="updateUniform('u_brightness', this.value, 'val_bright')">
             </div>
             <div class="slider-row">
-                <div class="slider-meta"><span>Tempo Animacji</span><span id="val_speed">1.0</span></div>
+                <div class="slider-meta"><span>Animation Speed</span><span id="val_speed">1.0</span></div>
                 <input type="range" min="0.1" max="3.0" step="0.1" value="1.0" oninput="updateUniform('u_timeSpeed', this.value, 'val_speed')">
             </div>
             <div class="slider-row" style="margin-bottom:0;">
-                <div class="slider-meta"><span>Odcień Barw (Hue Shift)</span><span id="val_hue">0.0</span></div>
+                <div class="slider-meta"><span>Color Tone (Hue Shift)</span><span id="val_hue">0.0</span></div>
                 <input type="range" min="0.0" max="1.0" step="0.05" value="0.0" oninput="updateUniform('u_hueShift', this.value, 'val_hue')">
             </div>
         </div>
@@ -653,11 +653,11 @@
     <nav class="bottom-nav">
         <button class="nav-item active" onclick="switchTab('tab-windows', this)">
             <span class="nav-icon">🪟</span>
-            <span class="nav-label">OKNA</span>
+            <span class="nav-label">WINDOWS</span>
         </button>
         <button class="nav-item" onclick="switchTab('tab-views', this)">
             <span class="nav-icon">🎨</span>
-            <span class="nav-label">WIDOKI</span>
+            <span class="nav-label">VIEWS</span>
         </button>
         <button class="nav-item" onclick="switchTab('tab-media', this)">
             <span class="nav-icon">🎬</span>
@@ -665,7 +665,7 @@
         </button>
         <button class="nav-item" onclick="switchTab('tab-mood', this)">
             <span class="nav-icon">✨</span>
-            <span class="nav-label">KLIMAT</span>
+            <span class="nav-label">AMBIENCE</span>
         </button>
     </nav>
 
@@ -726,17 +726,17 @@
 
         peer.on("error", (err) => {
             console.error("PeerJS error:", err);
-            statusText.innerText = "Błąd: " + err.type;
+            statusText.innerText = "Error: " + err.type;
         });
 
         function connectWithPin() {
             const pin = inputPin.value.trim();
             if (pin.length !== 6 && pin.length !== 4) {
-                alert("Wpisz 6-cyfrowy kod PIN z ekranu projektora!");
+                alert("Please enter the 6-digit PIN shown on the projector screen!");
                 return;
             }
             if (!peerReady) {
-                statusText.innerText = "Czekam na sieć...";
+                statusText.innerText = "Waiting for network...";
                 setTimeout(connectWithPin, 300);
                 return;
             }
@@ -744,8 +744,8 @@
             // Ujednolicenie formatu do 6 cyfr (lub zachowanie kompatybilności z demo 7777 -> 777700)
             const fullPin = pin.length === 4 ? pin.padEnd(6, '0') : pin;
             targetPeerId = "hy320-v2-" + fullPin;
-            statusText.innerText = "Weryfikacja #" + fullPin + "...";
-            document.querySelector(".btn-connect").innerText = "ŁĄCZENIE (SZYFROWANE)...";
+            statusText.innerText = "Verifying #" + fullPin + "...";
+            document.querySelector(".btn-connect").innerText = "CONNECTING (ENCRYPTED)...";
 
             if (conn) {
                 try { conn.close(); } catch(e){}
@@ -760,9 +760,9 @@
                 } catch(e){}
                 try {
                     if (dot) dot.className = "status-dot online";
-                    if (statusText) statusText.innerText = "Połączono (#" + fullPin + ")";
+                    if (statusText) statusText.innerText = "Connected (#" + fullPin + ")";
                     const btn = document.querySelector(".btn-connect");
-                    if (btn) btn.innerText = "POŁĄCZONO! ✨";
+                    if (btn) btn.innerText = "CONNECTED! ✨";
                     localStorage.setItem("last_maping_pin", fullPin);
                 } catch(e){}
 
@@ -771,7 +771,7 @@
                     if (localWindows) {
                         windows = JSON.parse(localWindows);
                         const wc = document.getElementById("winCount");
-                        if (wc) wc.innerText = "Okna: " + windows.length;
+                        if (wc) wc.innerText = "Windows: " + windows.length;
                         updateWindowTabs();
                         drawMaskCanvas();
                     }
@@ -794,13 +794,13 @@
                 if (data.type === "auth_success" || data.type === "auth_challenge") {
                     markConnected();
                 } else if (data.type === "auth_error") {
-                    alert("🛡️ Zabezpieczenie ekranu:\n" + (data.message || "Brak autoryzacji!"));
-                    statusText.innerText = "Odrzucono połączenie";
-                    document.querySelector(".btn-connect").innerText = "POŁĄCZ Z EKRANEM 🚀";
+                    alert("🛡️ Display security:\n" + (data.message || "Unauthorized access!"));
+                    statusText.innerText = "Connection rejected";
+                    document.querySelector(".btn-connect").innerText = "CONNECT TO DISPLAY 🚀";
                 } else if (data.type === "sync_state" && data.state) {
                     if (data.state.windows && data.state.windows.length > 0) {
                         windows = data.state.windows;
-                        document.getElementById("winCount").innerText = "Okna: " + windows.length;
+                        document.getElementById("winCount").innerText = "Windows: " + windows.length;
                         updateWindowTabs();
                         drawMaskCanvas();
                     }
@@ -817,15 +817,15 @@
 
             conn.on("close", () => {
                 dot.className = "status-dot";
-                statusText.innerText = "Rozłączono";
-                document.querySelector(".btn-connect").innerText = "POŁĄCZ Z EKRANEM 🚀";
+                statusText.innerText = "Disconnected";
+                document.querySelector(".btn-connect").innerText = "CONNECT TO DISPLAY 🚀";
             });
 
             conn.on("error", (err) => {
                 console.error("Conn error:", err);
-                statusText.innerText = "Nieudane";
-                document.querySelector(".btn-connect").innerText = "POŁĄCZ Z EKRANEM 🚀";
-                alert("Nie udało się połączyć! Upewnij się, że projektor wyświetla kod PIN #" + fullPin);
+                statusText.innerText = "Failed";
+                document.querySelector(".btn-connect").innerText = "CONNECT TO DISPLAY 🚀";
+                alert("Connection failed! Ensure the projector is showing PIN #" + fullPin);
             });
         }
 
@@ -1020,10 +1020,10 @@
             if (autoAtmosphereTimer) {
                 clearInterval(autoAtmosphereTimer);
                 autoAtmosphereTimer = null;
-                btn.innerText = "WYŁĄCZONE";
+                btn.innerText = "DISABLED";
                 btn.classList.remove("btn-gradient-coral");
             } else {
-                btn.innerText = "AKTYWNE ⚡";
+                btn.innerText = "ACTIVE ⚡";
                 btn.classList.add("btn-gradient-coral");
                 autoAtmosphereTimer = setInterval(() => {
                     const fxList = ["lightning", "shadow", "star"];
@@ -1041,7 +1041,7 @@
             send({ type: "grid", enabled: isGrid });
         }
 
-        // Profile pokoju
+        // Room Profiles & Presets
         const PRESETS_STORAGE_KEY = "maping_room_presets";
         function getStoredPresets() {
             try { return JSON.parse(localStorage.getItem(PRESETS_STORAGE_KEY)) || {}; }
@@ -1051,11 +1051,11 @@
         function refreshPresetDropdown() {
             const select = document.getElementById("presetSelect");
             const presets = getStoredPresets();
-            select.innerHTML = '<option value="">-- Wybierz zapisany pokój --</option>';
+            select.innerHTML = '<option value="">-- Choose a saved room --</option>';
             for (let name in presets) {
                 const opt = document.createElement("option");
                 opt.value = name;
-                opt.textContent = `${name} (${presets[name].length} okna)`;
+                opt.textContent = `${name} (${presets[name].length} windows)`;
                 select.appendChild(opt);
             }
         }
@@ -1064,24 +1064,24 @@
         function savePreset() {
             const nameInput = document.getElementById("presetNameInput");
             const name = nameInput.value.trim();
-            if (!name) { alert("Podaj nazwę profilu pokoju!"); return; }
+            if (!name) { alert("Enter a profile name!"); return; }
             const presets = getStoredPresets();
             presets[name] = JSON.parse(JSON.stringify(windows));
             localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
             nameInput.value = "";
             refreshPresetDropdown();
-            alert(`Profil "${name}" został pomyślnie zapisany! ✨`);
+            alert(`Profile "${name}" successfully saved! ✨`);
         }
 
         function loadPreset() {
             const select = document.getElementById("presetSelect");
             const name = select.value;
-            if (!name) { alert("Wybierz profil z listy!"); return; }
+            if (!name) { alert("Select a profile from the list!"); return; }
             const presets = getStoredPresets();
             if (presets[name]) {
                 windows = JSON.parse(JSON.stringify(presets[name]));
                 activeWindowIndex = windows.length > 0 ? 0 : -1;
-                document.getElementById("winCount").innerText = "Okna: " + windows.length;
+                document.getElementById("winCount").innerText = "Windows: " + windows.length;
                 updateWindowTabs();
                 drawMaskCanvas();
                 send({ type: "masks", windows: windows });
@@ -1092,7 +1092,7 @@
             const select = document.getElementById("presetSelect");
             const name = select.value;
             if (!name) return;
-            if (confirm(`Usunąć profil "${name}"?`)) {
+            if (confirm(`Delete profile "${name}"?`)) {
                 const presets = getStoredPresets();
                 delete presets[name];
                 localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
@@ -1116,12 +1116,12 @@
             if (activeWindowIndex >= 0 && activeWindowIndex < windows.length) {
                 windows.splice(activeWindowIndex, 1);
                 activeWindowIndex = windows.length > 0 ? Math.min(activeWindowIndex, windows.length - 1) : -1;
-                document.getElementById("winCount").innerText = "Okna: " + windows.length;
+                document.getElementById("winCount").innerText = "Windows: " + windows.length;
                 updateWindowTabs();
                 drawMaskCanvas();
                 send({ type: "masks", windows: windows });
             } else {
-                alert("Wybierz konkretne okno, które chcesz usunąć!");
+                alert("Please select a specific window to delete!");
             }
         }
 
@@ -1130,12 +1130,12 @@
             if (!file) return;
 
             const status = document.getElementById("uploadStatusText");
-            status.innerText = `Wysyłam: ${file.name} (${(file.size / 1024).toFixed(0)} KB)...`;
+            status.innerText = `Sending: ${file.name} (${(file.size / 1024).toFixed(0)} KB)...`;
 
             const reader = new FileReader();
             reader.onload = function(e) {
                 const dataUrl = e.target.result;
-                status.innerText = `Wysłano: ${file.name} ✅`;
+                status.innerText = `Sent: ${file.name} ✅`;
 
                 if (activeWindowIndex === -1) {
                     send({ type: "gif", url: dataUrl });
@@ -1150,20 +1150,20 @@
             reader.readAsDataURL(file);
         }
 
-        // Kolekcja shaderów
+        // Shader Collection
         const shaders = [
-            { file: "rainy_window.glsl", name: "🌧️ Deszcz za Szybą", bg: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)" },
-            { file: "fireplace_flame.glsl", name: "🪵 Ogień z Kominka", bg: "linear-gradient(180deg, #1a0000 0%, #ff3300 70%, #ffcc00 100%)" },
-            { file: "moonlit_clouds.glsl", name: "🌕 Księżycowa Noc", bg: "linear-gradient(135deg, #030814, #121f3d, #e8f0fe)" },
-            { file: "sunbeams_dust.glsl", name: "☀️ Snopy Słońca", bg: "linear-gradient(135deg, #2b1800, #b37d14, #fceabb)" },
-            { file: "ocean_caustics.glsl", name: "🌊 Woda w Basenie", bg: "linear-gradient(135deg, #0052d4, #4364f7, #6fb1fc)" },
-            { file: "cyber_aurora.glsl", name: "🌌 Zorza Polarna", bg: "linear-gradient(135deg, #0b1a30, #00d2ff, #7928ca)" },
-            { file: "hyperspace_warp.glsl", name: "✨ Tunel Gwiazd", bg: "radial-gradient(circle, #00ff88, #002244, #000)" },
-            { file: "neon_lava.glsl", name: "🔥 Płynna Plazma", bg: "linear-gradient(135deg, #ff007f, #ffaa00, #33001b)" },
-            { file: "synthwave_grid.glsl", name: "📐 Siatka Retro", bg: "linear-gradient(180deg, #12002b 0%, #ff007f 60%, #00ffff 100%)" },
-            { file: "techno_pulse.glsl", name: "🪩 Rytm Techno", bg: "radial-gradient(circle, #ff0055, #110033, #050510)" },
-            { file: "electric_arc.glsl", name: "⚡ Łuk Elektryczny", bg: "linear-gradient(135deg, #051429, #00d2ff, #ffffff)" },
-            { file: "zen_blossom.glsl", name: "🌸 Mandala Zen", bg: "radial-gradient(circle, #ff758c, #ff7eb3, #1e0826)" }
+            { file: "rainy_window.glsl", name: "🌧️ Rainy Window", bg: "linear-gradient(135deg, #0f2027, #203a43, #2c5364)" },
+            { file: "fireplace_flame.glsl", name: "🪵 Fireplace Flame", bg: "linear-gradient(180deg, #1a0000 0%, #ff3300 70%, #ffcc00 100%)" },
+            { file: "moonlit_clouds.glsl", name: "🌕 Moonlit Night", bg: "linear-gradient(135deg, #030814, #121f3d, #e8f0fe)" },
+            { file: "sunbeams_dust.glsl", name: "☀️ Sunbeams & Dust", bg: "linear-gradient(135deg, #2b1800, #b37d14, #fceabb)" },
+            { file: "ocean_caustics.glsl", name: "🌊 Pool Caustics", bg: "linear-gradient(135deg, #0052d4, #4364f7, #6fb1fc)" },
+            { file: "cyber_aurora.glsl", name: "🌌 Cyber Aurora", bg: "linear-gradient(135deg, #0b1a30, #00d2ff, #7928ca)" },
+            { file: "hyperspace_warp.glsl", name: "✨ Hyperspace Warp", bg: "radial-gradient(circle, #00ff88, #002244, #000)" },
+            { file: "neon_lava.glsl", name: "🔥 Liquid Lava", bg: "linear-gradient(135deg, #ff007f, #ffaa00, #33001b)" },
+            { file: "synthwave_grid.glsl", name: "📐 Synthwave Grid", bg: "linear-gradient(180deg, #12002b 0%, #ff007f 60%, #00ffff 100%)" },
+            { file: "techno_pulse.glsl", name: "🪩 Techno Pulse", bg: "radial-gradient(circle, #ff0055, #110033, #050510)" },
+            { file: "electric_arc.glsl", name: "⚡ Electric Arc", bg: "linear-gradient(135deg, #051429, #00d2ff, #ffffff)" },
+            { file: "zen_blossom.glsl", name: "🌸 Zen Blossom", bg: "radial-gradient(circle, #ff758c, #ff7eb3, #1e0826)" }
         ];
 
         const listContainer = document.getElementById("shaderList");
@@ -1195,12 +1195,12 @@
 
         function updateWindowTabs() {
             const tabs = document.getElementById("windowTabs");
-            tabs.innerHTML = `<button class="win-tab-pill ${activeWindowIndex === -1 ? 'active' : ''}" onclick="selectTargetWindow(-1)">🌍 Cały Pokój</button>`;
+            tabs.innerHTML = `<button class="win-tab-pill ${activeWindowIndex === -1 ? 'active' : ''}" onclick="selectTargetWindow(-1)">🌍 Full Room</button>`;
             windows.forEach((w, i) => {
                 let badge = "";
                 if (w.shaderFile) badge = "✨";
                 else if (w.mediaUrl) badge = "🎬";
-                tabs.innerHTML += `<button class="win-tab-pill ${activeWindowIndex === i ? 'active' : ''}" onclick="selectTargetWindow(${i})">🪟 Okno #${i + 1} ${badge}</button>`;
+                tabs.innerHTML += `<button class="win-tab-pill ${activeWindowIndex === i ? 'active' : ''}" onclick="selectTargetWindow(${i})">🪟 Window #${i + 1} ${badge}</button>`;
             });
         }
 
@@ -1262,17 +1262,17 @@
                 ]
             });
             activeWindowIndex = windows.length - 1;
-            document.getElementById("winCount").innerText = "Okna: " + windows.length;
+            document.getElementById("winCount").innerText = "Windows: " + windows.length;
             updateWindowTabs();
             drawMaskCanvas();
             send({ type: "masks", windows: windows });
         }
 
         function resetMasks() {
-            if (!confirm("Czy na pewno chcesz usunąć wszystkie okna?")) return;
+            if (!confirm("Are you sure you want to delete all windows?")) return;
             windows = [];
             activeWindowIndex = -1;
-            document.getElementById("winCount").innerText = "Okna: 0";
+            document.getElementById("winCount").innerText = "Windows: 0";
             updateWindowTabs();
             drawMaskCanvas();
             send({ type: "masks", windows: windows });
@@ -1289,7 +1289,7 @@
                 mCtx.fillStyle = "#94a3b8";
                 mCtx.font = "13px -apple-system, sans-serif";
                 mCtx.textAlign = "center";
-                mCtx.fillText("Brak okien (Kliknij '➕ Nowe Okno' u góry)", mCanvas.width / 2, mCanvas.height / 2);
+                mCtx.fillText("No windows (Click '➕ New Window' above)", mCanvas.width / 2, mCanvas.height / 2);
                 return;
             }
 
@@ -1315,7 +1315,7 @@
                 mCtx.font = "bold 13px sans-serif";
                 mCtx.textAlign = "center";
                 let winTag = win.shaderFile ? '✨' : (win.mediaUrl ? '🎬' : '');
-                mCtx.fillText(`Okno #${wIdx + 1} ${winTag}`, centerX, centerY);
+                mCtx.fillText(`Window #${wIdx + 1} ${winTag}`, centerX, centerY);
 
                 win.points.forEach((p) => {
                     const px = p.x * mCanvas.width;

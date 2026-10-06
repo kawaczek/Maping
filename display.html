@@ -758,7 +758,7 @@
         const peer = new Peer(peerId, peerConfig);
         peer.on("error", (err) => {
             console.error("Display PeerJS error:", err);
-            pinSub.innerHTML = "Błąd sieci (" + err.type + ")";
+            pinSub.innerHTML = "Network error (" + err.type + ")";
         });
 
         peer.on("connection", (conn) => {
@@ -766,7 +766,7 @@
 
             pinBanner.classList.add("connected");
             pinCodeEl.style.color = "#00ff88";
-            pinSub.innerHTML = "Połączono! 🛡️✨";
+            pinSub.innerHTML = "Connected! 🛡️✨";
             setTimeout(() => {
                 pinBanner.style.opacity = "0";
                 pinBanner.style.pointerEvents = "none";
