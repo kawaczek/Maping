@@ -79,18 +79,17 @@
         #pinBanner {
             position: absolute;
             top: 25px; left: 25px;
-            background: rgba(15, 17, 26, 0.95);
+            background: #0f111a;
             border: 2px solid #00d2ff;
-            box-shadow: 0 0 30px rgba(0, 210, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.4);
             border-radius: 20px;
             padding: 20px 24px;
             color: #ffffff;
             z-index: 40;
-            backdrop-filter: blur(10px);
             display: flex;
             align-items: center;
             gap: 24px;
-            transition: all 0.5s ease;
+            transition: opacity 0.5s ease;
         }
         #qrBox {
             background: #ffffff;
@@ -286,27 +285,44 @@
             const aPos = gl.getAttribLocation(prog, "aPosition");
             gl.enableVertexAttribArray(aPos);
             gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+            
+            // Cache uniform locations aby nie pytać WebGL w każdej klatce (ogromna oszczędność CPU!)
+            prog.uTimeLoc = gl.getUniformLocation(prog, "u_time");
+            prog.uResLoc = gl.getUniformLocation(prog, "u_resolution");
+            prog.uniformLocs = {};
+            for (let k in uniforms) {
+                prog.uniformLocs[k] = gl.getUniformLocation(prog, k);
+            }
+
             currentProgram = prog;
         }
         loadProgram(defaultFrag);
 
-        function render() {
-            if (gl && currentProgram && blackout.style.display !== "block") {
+        // Ograniczenie do max 30 FPS na projektorze – oszczędza 50% CPU i GPU Allwinnera!
+        let lastFrameTime = 0;
+        const targetFrameInterval = 1000 / 30; // 30 FPS
+
+        function render(now) {
+            requestAnimationFrame(render);
+
+            if (!now) now = performance.now();
+            if (now - lastFrameTime < targetFrameInterval) return;
+            lastFrameTime = now;
+
+            // Jeśli wszystkie okna mają własne shadery lub media, nie ma potrzeby liczyć tła!
+            if (gl && currentProgram && blackout.style.display !== "block" && canvas.style.display !== "none") {
                 gl.useProgram(currentProgram);
                 const time = (Date.now() - startTime) * 0.001;
-                const uTime = gl.getUniformLocation(currentProgram, "u_time");
-                if (uTime) gl.uniform1f(uTime, time);
-                const uRes = gl.getUniformLocation(currentProgram, "u_resolution");
-                if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+                if (currentProgram.uTimeLoc) gl.uniform1f(currentProgram.uTimeLoc, time);
+                if (currentProgram.uResLoc) gl.uniform2f(currentProgram.uResLoc, canvas.width, canvas.height);
                 for (let k in uniforms) {
-                    const loc = gl.getUniformLocation(currentProgram, k);
+                    const loc = currentProgram.uniformLocs ? currentProgram.uniformLocs[k] : null;
                     if (loc) gl.uniform1f(loc, uniforms[k]);
                 }
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
             }
-            requestAnimationFrame(render);
         }
-        render();
+        requestAnimationFrame(render);
 
         const gridCanvas = document.getElementById("gridCanvas");
         let gridActive = false;
@@ -448,6 +464,14 @@
             maskCurtain.style.display = "block";
             let holesSvg = "";
 
+            // Sprawdź czy wszystkie okna mają własne media/shadery
+            const allWindowsHaveContent = windows.every(w => w.shaderFile || w.mediaUrl);
+            if (allWindowsHaveContent) {
+                canvas.style.display = "none"; // Całkowite odciążenie głównego WebGL!
+            } else {
+                if (activeState.currentType === "shader") canvas.style.display = "block";
+            }
+
             for (let idx = 0; idx < windows.length; idx++) {
                 const w = windows[idx];
                 const pts = w.points.map(p => `${p.x * window.innerWidth},${p.y * window.innerHeight}`).join(" ");
@@ -535,20 +559,34 @@
                                         -1, -1,  1, -1, -1,  1,
                                         -1,  1,  1, -1,  1,  1
                                     ]), wgl.STATIC_DRAW);
-                                    const aP = wgl.getAttribLocation(prog, "aPosition");
+                                     const aP = wgl.getAttribLocation(prog, "aPosition");
                                     wgl.enableVertexAttribArray(aP);
                                     wgl.vertexAttribPointer(aP, 2, wgl.FLOAT, false, 0, 0);
 
+                                    // Cache uniform locations per program
+                                    const uTimeLoc = wgl.getUniformLocation(prog, "u_time");
+                                    const uResLoc = wgl.getUniformLocation(prog, "u_resolution");
+                                    const uniformLocMap = {};
+                                    ['u_timeSpeed', 'u_brightness', 'u_hueShift', 'u_zoom', 'u_colorBoost', 'u_scale', 'u_frequency'].forEach(k => {
+                                        uniformLocMap[k] = wgl.getUniformLocation(prog, k);
+                                    });
+
                                     const wStart = Date.now();
                                     const winRenderer = { animId: null };
-                                    function renderWinShader() {
+                                    let lastWinFrame = 0;
+
+                                    function renderWinShader(now) {
+                                        winRenderer.animId = requestAnimationFrame(renderWinShader);
+                                        if (!now) now = performance.now();
+                                        if (now - lastWinFrame < targetFrameInterval) return;
+                                        lastWinFrame = now;
+
                                         if (blackout.style.display !== "block") {
                                             wgl.useProgram(prog);
                                             const t = (Date.now() - wStart) * 0.001;
-                                            const ut = wgl.getUniformLocation(prog, "u_time");
-                                            if (ut) wgl.uniform1f(ut, t);
-                                            const ur = wgl.getUniformLocation(prog, "u_resolution");
-                                            if (ur) wgl.uniform2f(ur, boxW, boxH);
+                                            if (uTimeLoc) wgl.uniform1f(uTimeLoc, t);
+                                            if (uResLoc) wgl.uniform2f(uResLoc, boxW, boxH);
+                                            
                                             // Niezależne uniformy per okno
                                             const winUniforms = {
                                                 ...uniforms,
@@ -557,14 +595,13 @@
                                                 u_hueShift: fract((uniforms.u_hueShift || 0.0) + wHue)
                                             };
                                             for (let k in winUniforms) {
-                                                const loc = wgl.getUniformLocation(prog, k);
+                                                const loc = uniformLocMap[k];
                                                 if (loc) wgl.uniform1f(loc, winUniforms[k]);
                                             }
                                             wgl.drawArrays(wgl.TRIANGLES, 0, 6);
                                         }
-                                        winRenderer.animId = requestAnimationFrame(renderWinShader);
                                     }
-                                    renderWinShader();
+                                    winRenderer.animId = requestAnimationFrame(renderWinShader);
                                     windowShaderRenderers.push(winRenderer);
                                 }
                             }
